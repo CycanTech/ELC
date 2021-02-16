@@ -1,0 +1,2 @@
+# ELC
+Everlasting Cash
