@@ -4,14 +4,52 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod pool {
+    #[cfg(not(feature = "ink-as-dependency"))]
+    use ink_env::call::FromAccountId;
+    use ink_prelude::string::String;
+    #[cfg(not(feature = "ink-as-dependency"))]
+    use ink_storage::Lazy;
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
+    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
+    #[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
+    )]
+    pub struct PoolState {
+        pub from_symbol: String,
+        pub from_decimals: u8,
+        pub to_symbol: String,
+        pub to_decimals: u8,
+        pub from_token_pool: Balance,
+        pub to_token_pool: Balance,
+        pub lp_token_supply: Balance,
+        pub own_lp_token: Balance,
+    }
+
     #[ink(storage)]
-    pub struct Pool {
-        /// Stores a single `bool` value on the storage.
-        value: bool,
+    pub struct ELCaim {
+        aimprice: Option<u8>,
+        inflationfactor: Option<u8>,
+    }
+
+    #[ink(event)]
+    pub struct AddLiquidity {
+        #[ink(topic)]
+        sender: AccountId,
+        #[ink(topic)]
+        from_amount: Balance,
+        #[ink(topic)]
+        to_amount: Balance,
+    }
+
+    #[ink(event)]
+    pub struct RemoveLiquidity {
+        #[ink(topic)]
+        sender: AccountId,
+        #[ink(topic)]
+        from_amount: Balance,
+        #[ink(topic)]
+        to_amount: Balance,
     }
 
     impl Pool {
@@ -41,31 +79,6 @@ mod pool {
         #[ink(message)]
         pub fn get(&self) -> bool {
             self.value
-        }
-    }
-
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
-    #[cfg(test)]
-    mod tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
-        use super::*;
-
-        /// We test if the default constructor does its job.
-        #[test]
-        fn default_works() {
-            let pool = Pool::default();
-            assert_eq!(pool.get(), false);
-        }
-
-        /// We test a simple use case of our contract.
-        #[test]
-        fn it_works() {
-            let mut pool = Pool::new(false);
-            assert_eq!(pool.get(), false);
-            pool.flip();
-            assert_eq!(pool.get(), true);
         }
     }
 }
