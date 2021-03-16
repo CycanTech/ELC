@@ -1,71 +1,46 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use self::pool::Pool;
 use ink_lang as ink;
 
 #[ink::contract]
 mod pool {
 
-    /// Defines the storage of your contract.
-    /// Add new fields to the below struct in order
-    /// to add new static storage fields to your contract.
     #[ink(storage)]
     pub struct Pool {
-        /// Stores a single `bool` value on the storage.
-        value: bool,
+        aimprice: Option<u8>,
+        inflation: Option<u8>,
+        reserve: Balance,
+        risk_reserve: Balance,
     }
 
     impl Pool {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+        pub fn new(reserve: Balance, risk_reserve: Balance) -> Self {
+            let aim_price: Option<u8> = Some(1);
+            let inflation: Option<u8> = Some(5); //0.00005
+            let instance = Self {
+                aimprice: aim_price,
+                inflation: inflation,
+                reserve: reserve,
+                risk_reserve: risk_reserve,
+            };
+            instance
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
+        pub fn liability_ratio(&self) -> u8 {
+            0
         }
 
-        /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
-        }
-    }
-
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
-    #[cfg(test)]
-    mod tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
-        use super::*;
-
-        /// We test if the default constructor does its job.
-        #[test]
-        fn default_works() {
-            let pool = Pool::default();
-            assert_eq!(pool.get(), false);
+        pub fn elp_reserve(&self) -> Balance {
+            self.env().balance().saturating_sub(self.reserve)
         }
 
-        /// We test a simple use case of our contract.
-        #[test]
-        fn it_works() {
-            let mut pool = Pool::new(false);
-            assert_eq!(pool.get(), false);
-            pool.flip();
-            assert_eq!(pool.get(), true);
+        #[ink(message)]
+        pub fn elp_risk_reserve(&self) -> Balance {
+            self.env().balance().saturating_sub(self.risk_reserve)
         }
     }
 }
