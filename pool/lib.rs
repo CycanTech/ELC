@@ -1,84 +1,46 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use self::pool::Pool;
 use ink_lang as ink;
 
 #[ink::contract]
 mod pool {
-    #[cfg(not(feature = "ink-as-dependency"))]
-    use ink_env::call::FromAccountId;
-    use ink_prelude::string::String;
-    #[cfg(not(feature = "ink-as-dependency"))]
-    use ink_storage::Lazy;
-
-    #[derive(Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode)]
-    #[cfg_attr(
-    feature = "std",
-    derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
-    )]
-    pub struct PoolState {
-        pub from_symbol: String,
-        pub from_decimals: u8,
-        pub to_symbol: String,
-        pub to_decimals: u8,
-        pub from_token_pool: Balance,
-        pub to_token_pool: Balance,
-        pub lp_token_supply: Balance,
-        pub own_lp_token: Balance,
-    }
 
     #[ink(storage)]
-    pub struct ELCaim {
+    pub struct Pool {
         aimprice: Option<u8>,
-        inflationfactor: Option<u8>,
-    }
-
-    #[ink(event)]
-    pub struct AddLiquidity {
-        #[ink(topic)]
-        sender: AccountId,
-        #[ink(topic)]
-        from_amount: Balance,
-        #[ink(topic)]
-        to_amount: Balance,
-    }
-
-    #[ink(event)]
-    pub struct RemoveLiquidity {
-        #[ink(topic)]
-        sender: AccountId,
-        #[ink(topic)]
-        from_amount: Balance,
-        #[ink(topic)]
-        to_amount: Balance,
+        inflation: Option<u8>,
+        reserve: Balance,
+        risk_reserve: Balance,
     }
 
     impl Pool {
-        /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
-        pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+        pub fn new(reserve: Balance, risk_reserve: Balance) -> Self {
+            let aim_price: Option<u8> = Some(1);
+            let inflation: Option<u8> = Some(5); //0.00005
+            let instance = Self {
+                aimprice: aim_price,
+                inflation: inflation,
+                reserve: reserve,
+                risk_reserve: risk_reserve,
+            };
+            instance
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
+        pub fn liability_ratio(&self) -> u8 {
+            0
         }
 
-        /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
+        pub fn elp_reserve(&self) -> Balance {
+            self.env().balance().saturating_sub(self.reserve)
+        }
+
+        #[ink(message)]
+        pub fn elp_risk_reserve(&self) -> Balance {
+            self.env().balance().saturating_sub(self.risk_reserve)
         }
     }
 }
