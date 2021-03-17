@@ -11,61 +11,36 @@ mod oracle {
     #[ink(storage)]
     pub struct Oracle {
         /// Stores a single `bool` value on the storage.
-        value: bool,
+        elp_price: Option<u8>,
+        elc_price: Option<u8>,
+        block_timestamp_last: Option<u8>,
     }
 
     impl Oracle {
         /// Constructor that initializes the `bool` value to the given `init_value`.
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
-            Self { value: init_value }
+            Self {
+                elp_price: Some(0),
+                elc_price: Some(0),
+                block_timestamp_last:
+            }
         }
 
-        /// Constructor that initializes the `bool` value to `false`.
-        ///
-        /// Constructors can delegate to other constructors.
-        #[ink(constructor)]
-        pub fn default() -> Self {
-            Self::new(Default::default())
-        }
-
-        /// A message that can be called on instantiated contracts.
-        /// This one flips the value of the stored `bool` from `true`
-        /// to `false` and vice versa.
+        /// 每小时更新一次价格
         #[ink(message)]
-        pub fn flip(&mut self) {
-            self.value = !self.value;
+        pub fn update(&mut self, elp_price: Option<u8>, elc_price: Option<u8>) -> Option<u8> {
+            Self {
+                elp_price: elp_price,
+                elc_price: elc_price,
+                block_timestamp_last:
+            }
         }
 
-        /// Simply returns the current value of our `bool`.
         #[ink(message)]
-        pub fn get(&self) -> bool {
-            self.value
-        }
-    }
+        pub fn elp_price(&self) -> Option<u8> { self.elp_price }
 
-    /// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-    /// module and test functions are marked with a `#[test]` attribute.
-    /// The below code is technically just normal Rust code.
-    #[cfg(test)]
-    mod tests {
-        /// Imports all the definitions from the outer scope so we can use them here.
-        use super::*;
-
-        /// We test if the default constructor does its job.
-        #[test]
-        fn default_works() {
-            let oracle = Oracle::default();
-            assert_eq!(oracle.get(), false);
-        }
-
-        /// We test a simple use case of our contract.
-        #[test]
-        fn it_works() {
-            let mut oracle = Oracle::new(false);
-            assert_eq!(oracle.get(), false);
-            oracle.flip();
-            assert_eq!(oracle.get(), true);
-        }
+        #[ink(message)]
+        pub fn elc_price(&self) -> Option<u8> { self.elc_price }
     }
 }
