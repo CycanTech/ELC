@@ -11,9 +11,9 @@ mod oracle {
     #[ink(storage)]
     pub struct Oracle {
         /// Stores a single `bool` value on the storage.
-        elp_price: Option<u8>,
-        elc_price: Option<u8>,
-        block_timestamp_last: Option<u8>,
+        elp_price: u8,  //价格乘以100，避免小数
+        elc_price: u8,
+        block_timestamp_last: u8,
     }
 
     impl Oracle {
