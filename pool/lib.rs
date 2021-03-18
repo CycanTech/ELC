@@ -54,14 +54,14 @@ mod pool {
         /// 增加流动性(ELP)，返回rELP和ELC
         #[ink(message, payable)]
         pub fn add_liquidity(&mut self, from_tokens: Balance) -> (Balance, Balance) {
-            //首先更新ELCaim价格
-            self.update_ELCaim();
-            let LR = self.liability_ratio();
+            self.update_ELCaim(); //首先更新ELCaim价格
+            let LR = self.liability_ratio(); //计算LR
             if LR > 30 {
-                //返回用户rELP和0
+                //返回用户rELP和 0 ELC
 
             } else {
                 //返回用户ELC和rELP数量
+
             }
             (from_tokens, from_tokens)
         }
@@ -79,6 +79,26 @@ mod pool {
         pub fn get_reward(&mut self, rELP_amount: Balance) -> (Balance) {
             assert!(rELP_amount > 0);
             //返回ELP数量
+            rELP_amount
+        }
+
+        /// 扩张，swap选择交易所待定，提供给外部做市商调用，保证每次小量交易
+        #[ink(message)]
+        pub fn expand_elc(&mut self) {
+            let elc_price: u8 = self.oracle_contract.elc_price();
+            let elcaim = self.elcaim;
+            assert!(elc_price < elcaim * 0.98);
+            //调用swap，卖出ELC，买入ELP
+            rELP_amount
+        }
+
+        /// 收缩
+        #[ink(message)]
+        pub fn contract_elc(&mut self){
+            let elc_price: u8 = self.oracle_contract.elc_price();
+            let elcaim = self.elcaim;
+            assert!(elc_price > elcaim * 1.02);
+            //调用swap，卖出ELP，买入ELC
             rELP_amount
         }
 
