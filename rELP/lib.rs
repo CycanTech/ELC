@@ -110,6 +110,7 @@ mod rELP {
     }
 
     impl RELP {
+        //rELP要有初始发行量，如果没有，需要矿池一笔初始化交易
         #[ink(constructor)]
         pub fn new(
             initial_supply: Balance,

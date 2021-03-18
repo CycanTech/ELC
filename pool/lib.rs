@@ -53,28 +53,78 @@ mod pool {
 
         /// 增加流动性(ELP)，返回rELP和ELC
         #[ink(message, payable)]
-        pub fn add_liquidity(&mut self, from_tokens: Balance) -> (Balance, Balance) {
+        pub fn add_liquidity(&mut self) -> (Balance, Balance) {
             self.update_ELCaim(); //首先更新ELCaim价格
             let LR = self.liability_ratio(); //计算LR
+            let caller: Account = self.env().caller();
+            let elp_amount: u128 = self.env().transferred_balance();
+            let elp_price: u8 = self.oracle_contract.elp_price();
+            let elc_price: u8 = self.oracle_contract.elc_price();
+            let mut rELP_tokens: Balance = 0;
+            let mut elc_tokens: Balance = 0;
+            let rELP_balance = self.rELP_contract.total_supply();
+            let rELP_price = elp_price * self.reserve / rELP_balance;
             if LR > 30 {
                 //返回用户rELP和 0 ELC
+                let elc_tokens = elp_price * elp_amount * (LR/100000) / rELP_price;
+                assert!(self
+                    .rELP_contract
+                    .mint(caller, pool_account, elc_tokens)
+                    .is_ok());
 
+                let rELP_tokens = elp_price * elp_amount * (1- LR/100000)/ rELP_price;
+                assert!(self
+                    .rELP_contract
+                    .mint(caller, rELP_tokens)
+                    .is_ok());
             } else {
                 //返回用户ELC和rELP数量
-
-            }
-            (from_tokens, from_tokens)
+                let rELP_tokens = elp_price * elp_amount / rELP_price;
+                assert!(self
+                    .rELP_contract
+                    .mint(caller, rELP_tokens)
+                    .is_ok());
+            };
+            (rELP_tokens, elc_tokens)
         }
 
-        /// 退出流动性，发送ELP给用户
+        /// 退出流动性，发送ELP给用户,赎回只能使用rELP，
         #[ink(message)]
         pub fn remove_liquidity(&mut self, rELP_amount: Balance) -> (Balance) {
+            let caller = self.env().caller();
+            let pool_account = self.env().account_id();
+            let elp_price: u8 = self.oracle_contract.elp_price();
+            let LR = self.liability_ratio(); //计算LR
+            let rELP_balance = self.rELP_contract.total_supply();
+            let mut elp_amount: u8 = 0;
             assert!(rELP_amount > 0);
-            //返回ELP数量
+            //burn rELP
+            assert!(self
+                .rELP_contract
+                .burn(caller, pool_account, rELP_amount)
+                .is_ok());
+
+            //正向兑换rELP时 LR>30，ELP仅兑换rELP，反向兑亦然
+            if LR > 30 {
+                //compute ELP amount
+                //△Amount(ELP) = △Amount(rELP) * p(rELP) / p(ELP)
+                // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP)
+                let elp_amount = rELP_amount * self.reserve / rELP_balance;
+            } else {
+                //△Amount(ELP) = △Amount(rELP) * p(rELP) / (p(ELP) * (1-LR))
+                // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP) / (1-LR))
+                let elp_amount =  rELP_amount * self.reserve / rELP_balance / (1 - LR/100000);
+            }
+
+            //redeem ELP
+            assert!(self.env().transfer(caller, elp_amount).is_ok());
+
+            //give reward
+            self.get_reward();
             rELP_amount
         }
 
-        /// 单独领取奖励
+        /// 持有rELP即可领取奖励
         #[ink(message)]
         pub fn get_reward(&mut self, rELP_amount: Balance) -> (Balance) {
             assert!(rELP_amount > 0);
