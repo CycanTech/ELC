@@ -23,7 +23,7 @@ mod pool {
         k_update_time: u64,
         elc_contract: Lazy<ELC>,
         rELP_contract: Lazy<RELP>,
-        oracle_contract: AccountId,
+        oracle_contract: Lazy<Oracle>,
     }
 
     impl Pool {
@@ -105,7 +105,7 @@ mod pool {
             let lr =  elc_amount * elc_price/(elp_price * elp_amount) * 100; //100为精度
             lr
         }
-        
+
         #[ink(message)]
         pub fn elp_reserve(&self) -> Balance { self.reserve }
 
