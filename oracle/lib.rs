@@ -21,26 +21,24 @@ mod oracle {
         #[ink(constructor)]
         pub fn new(init_value: bool) -> Self {
             Self {
-                elp_price: Some(0),
-                elc_price: Some(0),
-                block_timestamp_last:
+                elp_price: 0,
+                elc_price: 0,
+                block_timestamp_last: 0,
             }
         }
 
-        /// 每小时更新一次价格
+        /// 每小时更新一次价格，精度100
         #[ink(message)]
-        pub fn update(&mut self, elp_price: Option<u8>, elc_price: Option<u8>) -> Option<u8> {
-            Self {
-                elp_price: elp_price,
-                elc_price: elc_price,
-                block_timestamp_last:
-            }
+        pub fn update(&mut self, elp_price: u8, elc_price: u8)  {
+            self.elp_price = elp_price;
+            self.elc_price =  elc_price;
+            self.block_timestamp_last = 0;
         }
 
         #[ink(message)]
-        pub fn elp_price(&self) -> Option<u8> { self.elp_price }
+        pub fn elp_price(&self) -> u8 { self.elp_price }
 
         #[ink(message)]
-        pub fn elc_price(&self) -> Option<u8> { self.elc_price }
+        pub fn elc_price(&self) -> u8 { self.elc_price }
     }
 }
