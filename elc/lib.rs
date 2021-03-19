@@ -9,7 +9,6 @@ mod elc {
 
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};
-    use ownership::Ownable;
 
     /// The ERC-20 error types.
     #[derive(Debug, PartialEq, Eq, scale::Encode)]
@@ -85,28 +84,6 @@ mod elc {
         user: AccountId,
         #[ink(topic)]
         amount: Balance,
-    }
-
-    impl Ownable for ELC {
-        #[ink(constructor)]
-        fn new() -> Self {
-            unimplemented!()
-        }
-
-        /// Contract owner.
-        #[ink(message)]
-        fn owner(&self) -> Option<AccountId> {
-            Some(self.owner)
-        }
-
-        /// transfer contract ownership to new owner.
-        #[ink(message)]
-        fn transfer_ownership(&mut self, new_owner: Option<AccountId>) {
-            self.only_owner();
-            if let Some(owner) = new_owner {
-                self.owner = owner;
-            }
-        }
     }
 
     impl ELC {
@@ -305,6 +282,19 @@ mod elc {
 
         fn only_owner(&self) {
             assert_eq!(self.env().caller(), self.owner);
+        }
+
+        /// Contract owner.
+        #[ink(message)]
+        pub fn owner(&self) -> AccountId {
+            self.owner
+        }
+
+        /// transfer contract ownership to new owner.
+        #[ink(message)]
+        pub fn transfer_ownership(&mut self, new_owner: AccountId) {
+            self.only_owner();
+            self.owner = new_owner;
         }
     }
 }

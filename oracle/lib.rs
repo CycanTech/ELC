@@ -4,7 +4,6 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod oracle {
-    use ownership::Ownable;
     /// Defines the storage of your contract.
     /// Add new fields to the below struct in order
     /// to add new static storage fields to your contract.
@@ -15,28 +14,6 @@ mod oracle {
         elc_price: u128,
         block_timestamp_last: u128,
         owner: AccountId,
-    }
-
-    impl Ownable for Oracle {
-        #[ink(constructor)]
-        fn new() -> Self {
-            unimplemented!()
-        }
-
-        /// Contract owner.
-        #[ink(message)]
-        fn owner(&self) -> Option<AccountId> {
-            Some(self.owner)
-        }
-
-        /// transfer contract ownership to new owner.
-        #[ink(message)]
-        fn transfer_ownership(&mut self, new_owner: Option<AccountId>) {
-            self.only_owner();
-            if let Some(owner) = new_owner {
-                self.owner = owner;
-            }
-        }
     }
 
     impl Oracle {
@@ -71,5 +48,17 @@ mod oracle {
             assert_eq!(self.env().caller(), self.owner);
         }
 
+        /// Contract owner.
+        #[ink(message)]
+        pub fn owner(&self) -> AccountId {
+            self.owner
+        }
+
+        /// transfer contract ownership to new owner.
+        #[ink(message)]
+        pub fn transfer_ownership(&mut self, new_owner: AccountId) {
+            self.only_owner();
+            self.owner = new_owner;
+        }
     }
 }
