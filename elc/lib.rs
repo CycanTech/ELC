@@ -11,7 +11,7 @@ mod elc {
     use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};
 
     /// The ERC-20 error types.
-    #[derive(Debug, PartialEq, Eq, scale::Encode)]
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Error {
         /// Returned if not enough balance to fulfill a request is available.
