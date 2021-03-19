@@ -6,7 +6,6 @@ use ink_lang as ink;
 #[ink::contract]
 mod rELP {
     use ink_prelude::string::String;
-
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};
     use ownership::Ownable;
