@@ -6,10 +6,8 @@ use ink_lang as ink;
 #[ink::contract]
 mod rELP {
     use ink_prelude::string::String;
-
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};
-    use ownership::Ownable;
 
     /// The ERC-20 error types.
     #[derive(Debug, PartialEq, Eq, scale::Encode)]
@@ -87,29 +85,9 @@ mod rELP {
         amount: Balance,
     }
 
-    impl Ownable for RELP {
-        #[ink(constructor)]
-        fn new() -> Self {
-            unimplemented!()
-        }
-
-        /// Contract owner.
-        #[ink(message)]
-        fn owner(&self) -> Option<AccountId> {
-            Some(self.owner)
-        }
-
-        /// transfer contract ownership to new owner.
-        #[ink(message)]
-        fn transfer_ownership(&mut self, new_owner: Option<AccountId>) {
-            self.only_owner();
-            if let Some(owner) = new_owner {
-                self.owner = owner;
-            }
-        }
-    }
 
     impl RELP {
+        //rELP要有初始发行量，如果没有，需要矿池一笔初始化交易
         #[ink(constructor)]
         pub fn new(
             initial_supply: Balance,
@@ -308,6 +286,19 @@ mod rELP {
 
         fn only_owner(&self) {
             assert_eq!(self.env().caller(), self.owner);
+        }
+
+        /// Contract owner.
+        #[ink(message)]
+        pub fn owner(&self) -> AccountId {
+            self.owner
+        }
+
+        /// transfer contract ownership to new owner.
+        #[ink(message)]
+        pub fn transfer_ownership(&mut self, new_owner: AccountId) {
+            self.only_owner();
+            self.owner = new_owner;
         }
     }
 }
