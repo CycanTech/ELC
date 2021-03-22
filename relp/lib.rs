@@ -1,10 +1,10 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use self::rELP::RELP;
+pub use self::relp::RELP;
 use ink_lang as ink;
 
 #[ink::contract]
-mod rELP {
+mod relp {
     use ink_prelude::string::String;
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};

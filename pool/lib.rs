@@ -6,7 +6,7 @@ use ink_lang as ink;
 #[ink::contract]
 mod pool {
     use elc::ELC;
-    use rELP::RELP;
+    use relp::RELP;
     use oracle::Oracle;
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_env::call::FromAccountId;
@@ -21,8 +21,30 @@ mod pool {
         risk_reserve: Balance,
         k_update_time: u128,
         elc_contract: Lazy<ELC>,
-        rELP_contract: Lazy<RELP>,
+        relp_contract: Lazy<RELP>,
         oracle_contract: Lazy<Oracle>,
+    }
+
+    #[ink(event)]
+    pub struct AddLiquidity {
+        #[ink(topic)]
+        sender: AccountId,
+        #[ink(topic)]
+        elp_amount: Balance,
+        #[ink(topic)]
+        relp_amount: Balance,
+        #[ink(topic)]
+        elc_amount: Balance,
+    }
+
+    #[ink(event)]
+    pub struct RemoveLiquidity {
+        #[ink(topic)]
+        sender: AccountId,
+        #[ink(topic)]
+        relp_amount: Balance,
+        #[ink(topic)]
+        elp_amount: Balance,
     }
 
     impl Pool {
@@ -31,11 +53,11 @@ mod pool {
             reserve: Balance,
             risk_reserve: Balance,
             elc_token: AccountId,
-            rELP_token: AccountId,
+            relp_token: AccountId,
             oracle_addr: AccountId,
         ) -> Self {
             let elc_contract: ELC = FromAccountId::from_account_id(elc_token);
-            let rELP_contract: RELP = FromAccountId::from_account_id(rELP_token);
+            let relp_contract: RELP = FromAccountId::from_account_id(relp_token);
             let oracle_contract: Oracle = FromAccountId::from_account_id(oracle_addr);
             let instance = Self {
                 elcaim: 1,
@@ -45,7 +67,7 @@ mod pool {
                 k_update_time: Self::env().block_timestamp().into(),
                 oracle_contract: Lazy::new(oracle_contract),
                 elc_contract: Lazy::new(elc_contract),
-                rELP_contract: Lazy::new(rELP_contract),
+                relp_contract: Lazy::new(relp_contract),
             };
             instance
         }
@@ -54,68 +76,79 @@ mod pool {
         #[ink(message, payable)]
         pub fn add_liquidity(&mut self) -> (Balance, Balance) {
             self.update_ELCaim(); //首先更新ELCaim价格
-            let LR = self.liability_ratio(); //计算LR
+            let lr = self.liability_ratio(); //计算LR
             let caller: AccountId = self.env().caller();
-            let elp_amount: u128 = self.env().transferred_balance();
+            let elp_amount: Balance = self.env().transferred_balance();
             let elp_price: u128 = self.oracle_contract.elp_price();
-            let elc_price: u128 = self.oracle_contract.elc_price();
-            let mut rELP_tokens: Balance = 0;
+            let mut relp_tokens: Balance = 0;
             let mut elc_tokens: Balance = 0;
-            let rELP_balance = self.rELP_contract.total_supply();
-            let rELP_price = elp_price * self.reserve / rELP_balance;
-            if LR > 30 {
-                //返回用户rELP和 0 ELC
-                let elc_tokens = elp_price * elp_amount * (LR/100000) / rELP_price;
+            let mut relp_balance = self.relp_contract.total_supply();
+            let mut relp_price = elp_price * self.reserve / relp_balance;
+            if lr > 30 {
+                //返回用户relp和 0 ELC
+                let elc_tokens = elp_price * elp_amount * (lr/100000) / relp_price;
                 assert!(self
-                    .rELP_contract
+                    .relp_contract
                     .mint(caller, elc_tokens)
                     .is_ok());
 
-                let rELP_tokens = elp_price * elp_amount * (1- LR/100000)/ rELP_price;
+                let relp_tokens = elp_price * elp_amount * (1- lr/100000)/ relp_price;
                 assert!(self
-                    .rELP_contract
-                    .mint(caller, rELP_tokens)
+                    .relp_contract
+                    .mint(caller, relp_tokens)
                     .is_ok());
             } else {
-                //返回用户ELC和rELP数量
-                let rELP_tokens = elp_price * elp_amount / rELP_price;
+                //返回用户ELC和relp数量
+                let relp_tokens = elp_price * elp_amount / relp_price;
                 assert!(self
-                    .rELP_contract
-                    .mint(caller, rELP_tokens)
+                    .relp_contract
+                    .mint(caller, relp_tokens)
                     .is_ok());
             };
-            (rELP_tokens, elc_tokens)
+            self.env().emit_event(AddLiquidity {
+                sender: caller,
+                elp_amount: elp_amount,
+                relp_amount: relp_tokens,
+                elc_amount: elc_tokens,
+            });
+            (relp_tokens, elc_tokens)
         }
 
         /// 退出流动性，发送ELP给用户,赎回只能使用rELP，
         #[ink(message)]
-        pub fn remove_liquidity(&mut self, rELP_amount: Balance) -> Balance {
+        pub fn remove_liquidity(&mut self, relp_amount: Balance) -> Balance {
             let caller: AccountId= self.env().caller();
-            let elp_price: u128 = self.oracle_contract.elp_price();
-            let LR = self.liability_ratio(); //计算LR
-            let rELP_balance = self.rELP_contract.total_supply();
-            let mut elp_amount: u128 = 0;
-            assert!(rELP_amount > 0);
-            //burn rELP
+//            let elp_price: u128 = self.oracle_contract.elp_price();
+            let lr = self.liability_ratio(); //计算LR
+            let relp_balance = self.relp_contract.total_supply();
+            let mut elp_amount: Balance = 0;
+            assert!(relp_amount > 0);
+            //burn relp
             assert!(self
-                .rELP_contract
-                .burn(caller, rELP_amount)
+                .relp_contract
+                .burn(caller, relp_amount)
                 .is_ok());
 
             //正向兑换rELP时 LR>30，ELP仅兑换rELP，反向兑亦然
-            if LR > 30 {
+            if lr > 30 {
                 //compute ELP amount
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / p(ELP)
                 // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP)
-                let elp_amount = rELP_amount * self.reserve / rELP_balance;
+                let elp_amount = relp_amount * self.reserve / relp_balance;
             } else {
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / (p(ELP) * (1-LR))
                 // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP) / (1-LR))
-                let elp_amount =  rELP_amount * self.reserve / rELP_balance / (1 - LR/100000);
+                let elp_amount =  relp_amount * self.reserve / relp_balance / (1 - lr/100000);
             }
 
             //redeem ELP
             assert!(self.env().transfer(caller, elp_amount).is_ok());
+
+            self.env().emit_event(RemoveLiquidity {
+                sender: caller,
+                relp_amount: relp_amount,
+                elp_amount: elp_amount,
+            });
 
             //give reward
             self.get_reward();
@@ -126,10 +159,10 @@ mod pool {
         #[ink(message)]
         pub fn get_reward(&mut self) -> Balance {
             let caller: AccountId= self.env().caller();
-            let rELP_amount = self.rELP_contract.balance_of(caller);
-            assert!(rELP_amount > 0);
+            let relp_amount = self.relp_contract.balance_of(caller);
+            assert!(relp_amount > 0);
             //返回ELP数量
-            rELP_amount
+            relp_amount
         }
 
         /// 扩张，swap选择交易所待定，提供给外部做市商调用，保证每次小量交易
@@ -152,7 +185,7 @@ mod pool {
 
         ///计算通胀因子，如果通胀因子变动要更新, 出块速度为6秒/块，每隔10000个块将ELC目标价格调升K
         #[ink(message)]
-        pub fn update_ELCaim(&mut self) {
+        pub fn update_elc_aim(&mut self) {
             let block_time:u128 = self.env().block_timestamp().into();
             let elcaim:u128 = self.elcaim;
             let last_update_time = self.k_update_time;
