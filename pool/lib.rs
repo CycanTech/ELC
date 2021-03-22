@@ -60,7 +60,7 @@ mod pool {
             let relp_contract: RELP = FromAccountId::from_account_id(relp_token);
             let oracle_contract: Oracle = FromAccountId::from_account_id(oracle_addr);
             let instance = Self {
-                elcaim: 1,
+                elcaim: 100,
                 k: 5, //0.00005 * 100000
                 reserve: reserve,
                 risk_reserve: risk_reserve,
@@ -85,12 +85,6 @@ mod pool {
             let mut relp_price = self.relp_price();
             if lr > 30 {
                 //返回用户relp和 0 ELC
-                let elc_tokens = elp_price * elp_amount * (lr/100000) / relp_price;
-                assert!(self
-                    .relp_contract
-                    .mint(caller, elc_tokens)
-                    .is_ok());
-
                 let relp_tokens = elp_price * elp_amount * (1- lr/100000)/ relp_price;
                 assert!(self
                     .relp_contract
@@ -102,6 +96,12 @@ mod pool {
                 assert!(self
                     .relp_contract
                     .mint(caller, relp_tokens)
+                    .is_ok());
+
+                let elc_tokens = elp_price * elp_amount * (lr/100000) / relp_price;
+                assert!(self
+                    .relp_contract
+                    .mint(caller, elc_tokens)
                     .is_ok());
             };
             self.env().emit_event(AddLiquidity {

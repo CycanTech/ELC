@@ -26,6 +26,13 @@ mod relp {
     /// The ERC-20 result type.
     pub type Result<T> = core::result::Result<T, Error>;
 
+    /// struct that represents a transfer time log
+    #[derive(scale::Encode, scale::Decode, PackedLayout, SpreadLayout, Debug, scale_info::TypeInfo)]
+    struct Transferlog {
+        amount: u128,
+        time: u128,
+    }
+
     #[ink(storage)]
     pub struct RELP {
         /// Total token supply.
@@ -44,6 +51,8 @@ mod relp {
         /// The contract owner, provides basic authorization control
         /// functions, this simplifies the implementation of "user permissions".
         owner: AccountId,
+        // AccountId -> average hold time
+        account_transferlog: StorageHashMap<Account, Vec<Transferlog>>,
     }
 
     /// Event emitted when a token transfer occurs.
@@ -110,6 +119,7 @@ mod relp {
                 symbol,
                 decimals,
                 owner: caller,
+                account_transferlog: StorageHashMap::new(),
             };
             Self::env().emit_event(Transfer {
                 from: None,
@@ -276,12 +286,44 @@ mod relp {
             self.balances.insert(from, from_balance - value);
             let to_balance = self.balance_of(to);
             self.balances.insert(to, to_balance + value);
+
+
             self.env().emit_event(Transfer {
                 from: Some(from),
                 to: Some(to),
                 value,
             });
             Ok(())
+        }
+
+        ///every unit hold time, unit per second
+        fn update_hold_time(&mut self, from: AccountId, to: AccountId, balance_last: Balance, balance1_now: Balance) {
+            let log_len = self.account_transferlog.get(&from).unwrap().len().try_into().unwrap();
+            if log_len > 0 {
+                assert_eq!(map.remove(&from), None);
+            }
+            let now_time: u128 = self::env().block_timestamp().into();
+
+            let mut from_push = Vec::new();
+            let mut to_push = Vec::new();
+
+            let mut log_from = Transferlog {
+                amount: self.balances.get(&from).copied().unwrap_or(0),
+                time: now_time,
+            };
+            let mut log_to = Transferlog {
+                amount: self.balances.get(&to).copied().unwrap_or(0),
+                time: now_time,
+            };
+            from_push.push(log_from);
+            to_push.push(log_to);
+            self.account_transferlog.insert(from, from_push);
+            self.account_transferlog.insert(to, to_push);
+        }
+
+        #[ink(message)]
+        pub fn hold_time(&self, owner: AccountId) -> u128 {
+
         }
 
         fn only_owner(&self) {
