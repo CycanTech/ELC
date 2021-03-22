@@ -82,8 +82,7 @@ mod pool {
             let elp_price: u128 = self.oracle_contract.elp_price();
             let mut relp_tokens: Balance = 0;
             let mut elc_tokens: Balance = 0;
-            let mut relp_balance = self.relp_contract.total_supply();
-            let mut relp_price = elp_price * self.reserve / relp_balance;
+            let mut relp_price = self.relp_price();
             if lr > 30 {
                 //返回用户relp和 0 ELC
                 let elc_tokens = elp_price * elp_amount * (lr/100000) / relp_price;
@@ -135,11 +134,12 @@ mod pool {
                 //compute ELP amount
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / p(ELP)
                 // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP)
-                let elp_amount = relp_amount * self.reserve / relp_balance;
+                elp_amount = relp_amount * self.reserve / relp_balance;
             } else {
+                //compute ELP amount
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / (p(ELP) * (1-LR))
                 // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP) / (1-LR))
-                let elp_amount =  relp_amount * self.reserve / relp_balance / (1 - lr/100000);
+                elp_amount =  relp_amount * self.reserve / relp_balance / (1 - lr/100000);
             }
 
             //redeem ELP
@@ -166,7 +166,8 @@ mod pool {
             relp_amount
         }
 
-        /// 扩张，swap选择交易所待定，提供给外部做市商调用，保证每次小量交易
+        /// when price lower, call swap contract, swap elc for elp
+        /// note: 扩张，swap选择交易所待定，提供给外部做市商调用，保证每次小量交易, 记录时间间隔
         #[ink(message)]
         pub fn expand_elc(&mut self) {
             let elc_price: u128 = self.oracle_contract.elc_price();
@@ -175,7 +176,7 @@ mod pool {
             //调用swap，卖出ELC，买入ELP
         }
 
-        /// 收缩
+        /// when price higher, call swap contract, swap elp for elc
         #[ink(message)]
         pub fn contract_elc(&mut self){
             let elc_price: u128 = self.oracle_contract.elc_price();
@@ -206,6 +207,16 @@ mod pool {
             let elc_amount: Balance = self.elc_contract.total_supply();
             let lr =  elc_amount * elc_price/(elp_price * elp_amount) * 100; //100为精度
             lr
+        }
+
+        ///compute internal relp price for query
+        #[ink(message)]
+        pub fn relp_price(&self) -> u128 {
+            let elp_price: u128 = self.oracle_contract.elp_price();
+            let relp_balance = self.relp_contract.total_supply();
+            //p(rELP) = p(ELP)*Amount(ELP)/Amount(rELP)
+            let relp_price = elp_price * self.reserve / relp_balance;
+            relp_price
         }
 
         #[ink(message)]
