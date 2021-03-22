@@ -43,7 +43,7 @@ std = [
     "scale-info",
     "scale-info/std",
      "elc/std",
-     "rELP/std",
+     "relp/std",
      "oracle/std",
 ]
 ink-as-dependency = []

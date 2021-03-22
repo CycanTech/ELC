@@ -75,7 +75,7 @@ mod pool {
         /// 增加流动性(ELP)，返回rELP和ELC
         #[ink(message, payable)]
         pub fn add_liquidity(&mut self) -> (Balance, Balance) {
-            self.update_ELCaim(); //首先更新ELCaim价格
+            self.update_elc_aim(); //首先更新ELCaim价格
             let lr = self.liability_ratio(); //计算LR
             let caller: AccountId = self.env().caller();
             let elp_amount: Balance = self.env().transferred_balance();
@@ -117,6 +117,7 @@ mod pool {
         /// 退出流动性，发送ELP给用户,赎回只能使用rELP，
         #[ink(message)]
         pub fn remove_liquidity(&mut self, relp_amount: Balance) -> Balance {
+            self.update_elc_aim(); //首先更新ELCaim价格
             let caller: AccountId= self.env().caller();
 //            let elp_price: u128 = self.oracle_contract.elp_price();
             let lr = self.liability_ratio(); //计算LR
