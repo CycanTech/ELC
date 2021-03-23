@@ -1,16 +1,22 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use self::rELP::RELP;
+pub use self::relp::RELP;
 use ink_lang as ink;
 
 #[ink::contract]
-mod rELP {
-    use ink_prelude::string::String;
+mod relp {
+    use ink_prelude::{string::String};
     #[cfg(not(feature = "ink-as-dependency"))]
-    use ink_storage::{collections::HashMap as StorageHashMap, lazy::Lazy};
+    use ink_prelude::{vec, vec::Vec};
+    #[cfg(not(feature = "ink-as-dependency"))]
+    use ink_storage::{
+        collections::HashMap as StorageHashMap,
+        lazy::Lazy,
+    };
+    use ink_storage::{traits::{PackedLayout, SpreadLayout}};
 
     /// The ERC-20 error types.
-    #[derive(Debug, PartialEq, Eq, scale::Encode)]
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
     #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
     pub enum Error {
         /// Returned if not enough balance to fulfill a request is available.
@@ -25,6 +31,14 @@ mod rELP {
 
     /// The ERC-20 result type.
     pub type Result<T> = core::result::Result<T, Error>;
+
+    /// struct that represents a transfer time log
+    #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode, SpreadLayout, PackedLayout)]
+    #[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+    struct Transferlog {
+        amount: u128,
+        timelog: u128,
+    }
 
     #[ink(storage)]
     pub struct RELP {
@@ -44,6 +58,10 @@ mod rELP {
         /// The contract owner, provides basic authorization control
         /// functions, this simplifies the implementation of "user permissions".
         owner: AccountId,
+        /// AccountId -> average hold time
+        transferlogs: StorageHashMap<AccountId, Vec<Transferlog>>,
+        /// record all relp holders
+        holders: Vec<AccountId>,
     }
 
     /// Event emitted when a token transfer occurs.
@@ -110,6 +128,8 @@ mod rELP {
                 symbol,
                 decimals,
                 owner: caller,
+                transferlogs: StorageHashMap::new(),
+                holders: Vec::new(),
             };
             Self::env().emit_event(Transfer {
                 from: None,
@@ -231,6 +251,23 @@ mod rELP {
             self.balances.insert(user, user_balance + amount);
             *self.total_supply += amount;
             self.env().emit_event(Mint { user, amount });
+
+            //deal with holders
+            if user_balance == 0 {
+                self.holders.push(user);
+            }
+
+            //deal with transferlog
+            let now_time: u128 = self.env().block_timestamp().into();
+            let mut transferlog_to = Transferlog {
+                amount: amount,
+                timelog: now_time,
+            };
+            if let Some(to_log) = self.transferlogs.get_mut(&user) {
+                to_log.push(transferlog_to);
+            } else {
+                self.transferlogs.insert(user, vec![transferlog_to]);
+            }
             Ok(())
         }
 
@@ -252,6 +289,26 @@ mod rELP {
             self.balances.insert(user, user_balance - amount);
             *self.total_supply -= amount;
             self.env().emit_event(Burn { user, amount });
+
+            //deal with user
+            if (user_balance - amount) == 0 {
+                //  delete
+                let index = self.holders.iter().position(|x| *x == user).unwrap();
+                self.holders.remove(index);
+            }
+
+            //deal with transferlog
+            let now_time: u128 = self.env().block_timestamp().into();
+            let mut transferlog_from = Transferlog {
+                amount: self.balances.get(&user).copied().unwrap_or(0),
+                timelog: now_time,
+            };
+            if let Some(from_log) = self.transferlogs.get_mut(&user) {
+//                from_log.push(ticket);
+                self.transferlogs.take(&user);
+            } else {
+                self.transferlogs.insert(user, vec![transferlog_from]);
+            }
             Ok(())
         }
 
@@ -273,15 +330,83 @@ mod rELP {
             if from_balance < value {
                 return Err(Error::InsufficientBalance);
             }
-            self.balances.insert(from, from_balance - value);
+            let from_balance_after = from_balance - value;
+            self.balances.insert(from, from_balance_after);
             let to_balance = self.balance_of(to);
             self.balances.insert(to, to_balance + value);
+
+            if from_balance_after == 0 {
+                //  delete
+                let index = self.holders.iter().position(|x| *x == from).unwrap();
+                self.holders.remove(index);
+            }
+            if to_balance == 0 {
+                // push
+                self.holders.push(to);
+            }
+
+            self.update_hold_time(from, to, value);
             self.env().emit_event(Transfer {
                 from: Some(from),
                 to: Some(to),
                 value,
             });
             Ok(())
+        }
+
+        ///every unit hold time, unit per second
+        fn update_hold_time(&mut self, from: AccountId, to: AccountId, value: Balance) {
+//            let log_len = self.transferlogs.get(&from).unwrap().len().try_into().unwrap();
+//            if log_len > 0 {
+//                assert_eq!(map.remove(&from), None);
+//            }
+            let now_time: u128 = self.env().block_timestamp().into();
+
+            let mut transferlog_from = Transferlog {
+                amount: self.balances.get(&from).copied().unwrap_or(0),
+                timelog: now_time,
+            };
+
+            if let Some(from_log) = self.transferlogs.get_mut(&from) {
+//                from_log.push(ticket);
+                self.transferlogs.take(&from);
+            } else {
+                self.transferlogs.insert(from, vec![transferlog_from]);
+            }
+
+            let mut transferlog_to = Transferlog {
+                amount: value,
+                timelog: now_time,
+            };
+            if let Some(to_log) = self.transferlogs.get_mut(&to) {
+                to_log.push(transferlog_to);
+            } else {
+                self.transferlogs.insert(to, vec![transferlog_to]);
+            }
+        }
+
+        #[ink(message)]
+        pub fn hold_time(&self, user: AccountId, now_time: u128) -> (u128, u128) {
+            let mut holdtime: u128 = 0;
+            let mut hold_realtime: u128 = 0;
+            let logs = self.transferlogs.get(&user).unwrap();
+            for log in logs.iter() {
+                holdtime = holdtime + log.amount * (now_time - log.timelog);
+                hold_realtime = hold_realtime + (now_time - log.timelog);
+            }
+            (holdtime, hold_realtime)
+        }
+
+        #[ink(message)]
+        pub fn hold_time_all(&self, now_time: u128) -> u128 {
+            let mut holdtime: u128 = 0;
+            for holder in self.holders.iter() {
+                let logs = self.transferlogs.get(&holder).unwrap();
+                for log in logs.iter() {
+                    holdtime = holdtime + log.amount * (now_time - log.timelog);
+                }
+            }
+            holdtime
         }
 
         fn only_owner(&self) {
