@@ -11,8 +11,11 @@ mod pool {
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_env::call::FromAccountId;
     #[cfg(not(feature = "ink-as-dependency"))]
-    use ink_storage::Lazy;
-
+    use ink_storage::{
+        lazy::Lazy,
+    };
+    use ink_prelude::{string::String, vec, vec::Vec};
+    
     #[ink(storage)]
     pub struct Pool {
         elcaim: u128,
@@ -160,10 +163,18 @@ mod pool {
         #[ink(message)]
         pub fn get_reward(&mut self) -> Balance {
             let caller: AccountId= self.env().caller();
-            let relp_amount = self.relp_contract.balance_of(caller);
+//            let relp_amount = self.relp_contract.balance_of(caller);
             assert!(relp_amount > 0);
-            //返回ELP数量
-            relp_amount
+            let now_time: u128 = self.env().block_timestamp().into();
+            let hold_time: u128 = self.relp_contract.hold_time(caller, now_time);
+            let hold_time_all: u128 = self.relp_contract.hold_time_all(now_time);
+
+            //6 seconds per block, every block reward, reward assume reward is 5
+            let elp_amount: u128 = hold_time / hold_time_all * 5 * 10e8;
+            assert!(self.env().transfer(caller, elp_amount).is_ok());
+            self.risk_reserve -= elp_amount;
+            //return elp amount
+            elp_amount
         }
 
         /// when price lower, call swap contract, swap elc for elp
