@@ -5,13 +5,15 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod relp {
-    use ink_prelude::{string::String, vec, vec::Vec};
+    use ink_prelude::{string::String};
+    #[cfg(not(feature = "ink-as-dependency"))]
+    use ink_prelude::{vec, vec::Vec};
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{
         collections::HashMap as StorageHashMap,
-        traits::{PackedLayout, SpreadLayout},
         lazy::Lazy,
     };
+    use ink_storage::{traits::{PackedLayout, SpreadLayout}};
 
     /// The ERC-20 error types.
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -384,13 +386,15 @@ mod relp {
         }
 
         #[ink(message)]
-        pub fn hold_time(&self, user: AccountId, now_time: u128) -> u128 {
+        pub fn hold_time(&self, user: AccountId, now_time: u128) -> (u128, u128) {
             let mut holdtime: u128 = 0;
+            let mut hold_realtime: u128 = 0;
             let logs = self.transferlogs.get(&user).unwrap();
             for log in logs.iter() {
                 holdtime = holdtime + log.amount * (now_time - log.timelog);
+                hold_realtime = hold_realtime + (now_time - log.timelog);
             }
-            holdtime
+            (holdtime, hold_realtime)
         }
 
         #[ink(message)]
