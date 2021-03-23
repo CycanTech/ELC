@@ -80,40 +80,52 @@ mod pool {
         #[ink(message, payable)]
         pub fn add_liquidity(&mut self) -> (Balance, Balance) {
             self.update_elc_aim(); //首先更新ELCaim价格
-            let lr = self.liability_ratio(); //计算LR
             let caller: AccountId = self.env().caller();
             let elp_amount: Balance = self.env().transferred_balance();
-            let elp_price: u128 = self.oracle_contract.elp_price();
-            let mut relp_tokens: Balance = 0;
-            let mut elc_tokens: Balance = 0;
-            let mut relp_price = self.relp_price();
-            if lr > 30 {
-                //返回用户relp和 0 ELC
-                let relp_tokens = elp_price * elp_amount * (1- lr/100000)/ relp_price;
-                assert!(self
-                    .relp_contract
-                    .mint(caller, relp_tokens)
-                    .is_ok());
-            } else {
-                //返回用户ELC和relp数量
-                let relp_tokens = elp_price * elp_amount / relp_price;
-                assert!(self
-                    .relp_contract
-                    .mint(caller, relp_tokens)
-                    .is_ok());
-
-                let elc_tokens = elp_price * elp_amount * (lr/100000) / relp_price;
+            let (relp_tokens, elc_tokens) = self.compute_liquidity(elp_amount);
+            if elc_tokens != 0 {
                 assert!(self
                     .relp_contract
                     .mint(caller, elc_tokens)
                     .is_ok());
-            };
+            }
+            assert!(self
+                .relp_contract
+                .mint(caller, relp_tokens)
+                .is_ok());
             self.env().emit_event(AddLiquidity {
                 sender: caller,
                 elp_amount: elp_amount,
                 relp_amount: relp_tokens,
                 elc_amount: elc_tokens,
             });
+            (relp_tokens, elc_tokens)
+        }
+
+        /// compute add-liquidity threshold for internal and external call
+        #[ink(message)]
+        pub fn compute_liquidity(&self, elp_amount_deposit: Balance) -> (Balance, Balance) {
+            let elp_price: u128 = self.oracle_contract.elp_price();
+            let elc_price: u128 = self.oracle_contract.elc_price();
+            let elc_amount: Balance = self.elc_contract.total_supply();
+            let mut relp_tokens: Balance = 0;
+            let mut elc_tokens: Balance = 0;
+            let mut relp_price = self.relp_price();
+            let lr = self.liability_ratio(); //计算LR
+            if lr < 30 {
+                // compute elp amount make LR >= 30
+                let elp_amount_threshold: Balance  = elc_amount * elc_price * 100 / (elp_price * 30);
+                if elp_amount_deposit < elp_amount_threshold {
+                    relp_tokens = elp_price * elp_amount_deposit / relp_price;
+                    elc_tokens = elp_price * elp_amount_deposit * (lr/100000) / relp_price;
+                } else {
+                    relp_tokens = elp_price * elp_amount_threshold / relp_price +
+                        elp_price * (elp_amount_deposit - elp_amount_threshold) * (1- lr/100000)/ relp_price;
+                    elc_tokens = elp_price * elp_amount_threshold * (lr/100000) / relp_price;
+                }
+            } else {
+                relp_tokens = elp_price * elp_amount_deposit * (1- lr/100000)/ relp_price;
+            };
             (relp_tokens, elc_tokens)
         }
 
@@ -236,5 +248,11 @@ mod pool {
 
         #[ink(message)]
         pub fn elp_risk_reserve(&self) -> Balance { self.risk_reserve }
+
+        /// define a struct returns all pool states
+        #[ink(message)]
+        pub fn pool_state(&self)  {
+
+        }
     }
 }
