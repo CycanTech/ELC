@@ -181,15 +181,13 @@ mod pool {
             let now_time: u128 = self.env().block_timestamp().into();
             let (hold_time, hold_realtime) = self.relp_contract.hold_time(caller, now_time);
             let hold_time_all: u128 = self.relp_contract.hold_time_all(now_time);
-
-            self.relp_contract.update_hold_time_for_reward(caller, relp_amount, now_time);
-
             //6 seconds per block, every block reward, reward assume reward is 5, decimal is 10^12
             let elp_amount: u128 = hold_time / hold_time_all * (hold_realtime/6) * 5 * 10^12 ;
             if self.risk_reserve > 0 {
                 assert!(self.env().transfer(caller, elp_amount).is_ok());
                 self.risk_reserve -= elp_amount;
             }
+            self.relp_contract.update_hold_time_for_reward(caller, relp_amount, now_time);
             //return elp amount
             elp_amount
         }
