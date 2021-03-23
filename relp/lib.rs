@@ -304,7 +304,6 @@ mod relp {
                 timelog: now_time,
             };
             if let Some(from_log) = self.transferlogs.get_mut(&user) {
-//                from_log.push(ticket);
                 self.transferlogs.take(&user);
             } else {
                 self.transferlogs.insert(user, vec![transferlog_from]);
@@ -368,7 +367,6 @@ mod relp {
             };
 
             if let Some(from_log) = self.transferlogs.get_mut(&from) {
-//                from_log.push(ticket);
                 self.transferlogs.take(&from);
             } else {
                 self.transferlogs.insert(from, vec![transferlog_from]);
@@ -382,6 +380,20 @@ mod relp {
                 to_log.push(transferlog_to);
             } else {
                 self.transferlogs.insert(to, vec![transferlog_to]);
+            }
+        }
+
+        #[ink(message)]
+        pub fn update_hold_time_for_reward(&mut self, from: AccountId, value: Balance, now_time: u128)  {
+            self.only_owner(); //owner only
+            let mut transferlog_from = Transferlog {
+                amount: self.balances.get(&from).copied().unwrap_or(0),
+                timelog: now_time,
+            };
+            if let Some(from_log) = self.transferlogs.get_mut(&from) {
+                self.transferlogs.take(&from);
+            } else {
+                self.transferlogs.insert(from, vec![transferlog_from]);
             }
         }
 

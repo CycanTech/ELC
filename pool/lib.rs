@@ -176,16 +176,20 @@ mod pool {
         #[ink(message)]
         pub fn get_reward(&mut self) -> Balance {
             let caller: AccountId= self.env().caller();
-//            let relp_amount = self.relp_contract.balance_of(caller);
+            let relp_amount = self.relp_contract.balance_of(caller);
 //            assert!(relp_amount > 0);
             let now_time: u128 = self.env().block_timestamp().into();
             let (hold_time, hold_realtime) = self.relp_contract.hold_time(caller, now_time);
             let hold_time_all: u128 = self.relp_contract.hold_time_all(now_time);
 
+            self.relp_contract.update_hold_time_for_reward(caller, relp_amount, now_time);
+
             //6 seconds per block, every block reward, reward assume reward is 5, decimal is 10^12
             let elp_amount: u128 = hold_time / hold_time_all * (hold_realtime/6) * 5 * 10^12 ;
-            assert!(self.env().transfer(caller, elp_amount).is_ok());
-            self.risk_reserve -= elp_amount;
+            if self.risk_reserve > 0 {
+                assert!(self.env().transfer(caller, elp_amount).is_ok());
+                self.risk_reserve -= elp_amount;
+            }
             //return elp amount
             elp_amount
         }
