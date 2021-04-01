@@ -281,10 +281,11 @@ mod pool {
                     /// 95 allocate to ELC holders
                     let mint_to_holders_amount:u128 = expand_amount * 95 / 100;
                     let mint_to_reserve_amount:u128 = expand_amount * 5 / 100;
+                    self.elc_contract.mint(self.relp_contract, mint_to_holders_amount);
                     assert!(self.relp_contract.mint_to_holders(mint_to_holders_amount));
-
+                    
                     /// 5% allocate to ELP reserve
-                    self.elc_contract.mint(self.relp_contract, mint_to_reserve_amount);
+                    self.elc_contract.mint(self.env().account_id(), mint_to_reserve_amount);
                     let elp_amount = self.exchange_contract.swap_token_to_dot_input(mint_to_reserve_amount);
                     assert!(elp_amount > 0);
                     self.env().emit_event(ExpandEvent {

@@ -433,7 +433,7 @@ mod relp {
                 let total_supply = self.total_supply();
                 let balance = self.balanceOf(&holder);
                 let mint_amount = expand_amount * balance / total_supply;
-                assert!(self.elc_contract.mint(&holder, mint_amount).is_ok());
+                assert!(self.elc_contract.transfer(&holder, mint_amount).is_ok());
             }
             Ok(())
         }
