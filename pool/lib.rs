@@ -111,10 +111,10 @@ mod pool {
             instance
         }
 
-        /// 增加流动性(ELP)，返回rELP和ELC
+        /// add liquidity for ELP，returns rELP and ELC
         #[ink(message, payable)]
         pub fn add_liquidity(&mut self) -> (Balance, Balance) {
-            self.update_elc_aim(); //首先更新ELCaim价格
+            self.update_elc_aim();
             let caller: AccountId = self.env().caller();
             let elp_amount: Balance = self.env().transferred_balance();
             let (relp_tokens, elc_tokens) = self.compute_liquidity(elp_amount);
@@ -146,7 +146,7 @@ mod pool {
             let mut relp_tokens: Balance = 0;
             let mut elc_tokens: Balance = 0;
             let mut relp_price = self.relp_price();
-            let lr = self.liability_ratio(); //计算LR
+            let lr = self.liability_ratio();
             if lr < 30 {
                 // compute elp amount make LR >= 30
                 let elp_amount_threshold: Balance  = elc_amount * elc_price * 100 / (elp_price * 30);
@@ -164,13 +164,13 @@ mod pool {
             (relp_tokens, elc_tokens)
         }
 
-        /// 退出流动性，发送ELP给用户,赎回只能使用rELP，
+        /// remove liquidity, user can get back their ELP by burn rELP and get their reward
         #[ink(message)]
         pub fn remove_liquidity(&mut self, relp_amount: Balance) -> Balance {
-            self.update_elc_aim(); //首先更新ELCaim价格
+            self.update_elc_aim();
             let caller: AccountId= self.env().caller();
 //            let elp_price: u128 = self.oracle_contract.elp_price();
-            let lr = self.liability_ratio(); //计算LR
+            let lr = self.liability_ratio();
             let relp_balance = self.relp_contract.total_supply();
             let mut elp_amount: Balance = 0;
             assert!(relp_amount > 0);
@@ -180,7 +180,7 @@ mod pool {
                 .burn(caller, relp_amount)
                 .is_ok());
 
-            //正向兑换rELP时 LR>30，ELP仅兑换rELP，反向兑亦然
+            //when LR>30，only consider rELP price, else consider rELP and ELC price
             if lr > 30 {
                 //compute ELP amount
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / p(ELP)
@@ -234,7 +234,7 @@ mod pool {
         pub fn expand_elc(&mut self) {
             let elc_price: u128 = self.oracle_contract.elc_price();
             let elp_price: u128 = self.oracle_contract.elp_price();
-            let lr = self.liability_ratio(); //计算LR
+            let lr = self.liability_ratio(); 
             let elcaim_deviation = self.elcaim * 102 / 100;
             assert!(elc_price > elcaim_deviation);
 
@@ -281,11 +281,11 @@ mod pool {
                     /// 95 allocate to ELC holders
                     let mint_to_holders_amount:u128 = expand_amount * 95 / 100;
                     let mint_to_reserve_amount:u128 = expand_amount * 5 / 100;
-                    self.elc_contract.mint(self.relp_contract, mint_to_holders_amount);
-                    assert!(self.relp_contract.mint_to_holders(mint_to_holders_amount));
-                    
+                    assert!(self.elc_contract.mint(self.relp_contract, mint_to_holders_amount).is_ok());
+                    assert!(self.relp_contract.mint_to_holders(mint_to_holders_amount).is_ok());
+
                     /// 5% allocate to ELP reserve
-                    self.elc_contract.mint(self.env().account_id(), mint_to_reserve_amount);
+                    assert!(self.elc_contract.mint(self.env().account_id(), mint_to_reserve_amount).is_ok());
                     let elp_amount = self.exchange_contract.swap_token_to_dot_input(mint_to_reserve_amount);
                     assert!(elp_amount > 0);
                     self.env().emit_event(ExpandEvent {
@@ -356,7 +356,7 @@ mod pool {
             self.last_contract_time = block_time;
         }
 
-        ///计算通胀因子，如果通胀因子变动要更新, 出块速度为6秒/块，每隔10000个块将ELC目标价格调升K
+        ///compute inflation factor, 6 seconds per block, every 10000 adjust ELC aim price
         #[ink(message)]
         pub fn update_elc_aim(&mut self) {
             let block_time:u128 = self.env().block_timestamp().into();
@@ -369,14 +369,14 @@ mod pool {
             }
         }
 
-        /// 返回系统负债率，调用时需要实时计算, 返回整数，以100为基数
+        /// compute liability ratio
         #[ink(message)]
         pub fn liability_ratio(&self) -> u128 {
             let elp_price: u128 = self.oracle_contract.elp_price();
             let elc_price: u128 = self.oracle_contract.elc_price();
             let elp_amount: Balance = self.reserve;
             let elc_amount: Balance = self.elc_contract.total_supply();
-            let lr =  elc_amount * elc_price/(elp_price * elp_amount) * 100; //100为精度
+            let lr =  elc_amount * elc_price/(elp_price * elp_amount) * 100; //100 as base
             lr
         }
 
