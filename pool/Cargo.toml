@@ -19,6 +19,9 @@ elc = { version = "0.1.0", path = "../elc", default-features = false, features =
 relp = { version = "0.1.0", path = "../relp", default-features = false, features = ["ink-as-dependency"]}
 oracle = { version = "0.1.0", path = "../oracle", default-features = false, features = ["ink-as-dependency"]}
 
+factory = { version = "0.1.0", path = "../../store-contracts/contracts/patraswap", default-features = false, features = ["ink-as-dependency"]}
+exchange2 = { version = "0.1.0", path = "../../store-contracts/contracts/patraswap/exchange2", default-features = false, features = ["ink-as-dependency"]}
+
 [lib]
 name = "pool"
 path = "lib.rs"
@@ -42,8 +45,11 @@ std = [
     "scale/std",
     "scale-info",
     "scale-info/std",
-     "elc/std",
-     "relp/std",
-     "oracle/std",
+    "elc/std",
+    "relp/std",
+    "oracle/std",
+    "factory/std",
+	"exchange2/std",
+	
 ]
 ink-as-dependency = []
