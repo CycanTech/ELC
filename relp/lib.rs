@@ -427,7 +427,7 @@ mod relp {
         }
 
         #[ink(message)]
-        pub fn mint_to_all(&self, expand_amount:u128) ->  Result<()>  {
+        pub fn mint_to_holders(&self, expand_amount:u128) ->  Result<()>  {
             self.only_owner();
             for holder in self.holders.iter() {
                 let total_supply = self.total_supply();
