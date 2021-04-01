@@ -5,6 +5,7 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod relp {
+    use elc::ELC;
     use ink_prelude::{string::String};
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_prelude::{vec, vec::Vec};
@@ -62,6 +63,7 @@ mod relp {
         transferlogs: StorageHashMap<AccountId, Vec<Transferlog>>,
         /// record all relp holders
         holders: Vec<AccountId>,
+        elc_contract: Lazy<ELC>,
     }
 
     /// Event emitted when a token transfer occurs.
@@ -109,6 +111,7 @@ mod relp {
         #[ink(constructor)]
         pub fn new(
             initial_supply: Balance,
+            elc_token: AccountId,
 //            name: Option<String>,
 //            symbol: Option<String>,
 //            decimals: Option<u8>,
@@ -120,6 +123,7 @@ mod relp {
             let name: Option<String> = Some(String::from("Risk Reserve of ELP"));
             let symbol: Option<String> = Some(String::from("rELP"));
             let decimals: Option<u8> = Some(8);
+            let elc_contract: ELC = FromAccountId::from_account_id(elc_token);
             let instance = Self {
                 total_supply: Lazy::new(initial_supply),
                 balances,
@@ -130,6 +134,7 @@ mod relp {
                 owner: caller,
                 transferlogs: StorageHashMap::new(),
                 holders: Vec::new(),
+                elc_contract: Lazy::new(elc_contract),
             };
             Self::env().emit_event(Transfer {
                 from: None,
@@ -419,6 +424,18 @@ mod relp {
                 }
             }
             holdtime
+        }
+
+        #[ink(message)]
+        pub fn mint_to_all(&self, expand_amount:u128) ->  Result<()>  {
+            self.only_owner();
+            for holder in self.holders.iter() {
+                let total_supply = self.total_supply();
+                let balance = self.balanceOf(&holder);
+                let mint_amount = expand_amount * balance / total_supply;
+                assert!(self.elc_contract.mint(&holder, mint_amount).is_ok());
+            }
+            Ok(())
         }
 
         fn only_owner(&self) {

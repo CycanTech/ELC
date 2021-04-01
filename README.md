@@ -3,7 +3,7 @@
 
 ELC is a decentralized anti-inflation stablecoin with a reserve system, a hybrid of a crypto-collateralized and algorithmic stablecoin mechanism, with the collateralized mechanism providing the underlying value guarantee, and the algorithmic mechanism incentivizing the participants of the collateralized mechanism on one hand and hedging the downside risk when the demand for the stablecoin is insufficient on the other. 
 
-The Cycan Network (CYA) is an isomorphic parachain on the Polkadot network. The Everlasting Parachain (ELP), as Cycan’s canary network, is the isomorphic parachain on the Kusama network, which is Polkadot’s canary network. The Cycan Network aims to build a decentralized autonomous trust (DAT) protocol for everyone.The ELC protocol is a smart contract protocol based on the Cycan Network/Everlasting Parachain.
+The Cycan Network (CYN) is an isomorphic parachain on the Polkadot network. The Everlasting Parachain (ELP), as Cycan’s canary network, is the isomorphic parachain on the Kusama network, which is Polkadot’s canary network. The Cycan Network aims to build a decentralized autonomous trust (DAT) protocol for everyone.The ELC protocol is a smart contract protocol based on the Cycan Network/Everlasting Parachain.
 
 # 2. Overview
 

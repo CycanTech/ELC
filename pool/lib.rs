@@ -31,6 +31,7 @@ mod pool {
         last_contract_time: u128,
         expand_adj_num: u128,
         contract_adj_num: u128,
+        adjust_gap: u128,
         expand_gap: Vec<OpGap>,
         contract_gap: Vec<OpGap>,
         elc_contract: Lazy<ELC>,
@@ -104,13 +105,14 @@ mod pool {
                 last_contract_time:  k_update_time,
                 expand_adj_num: 100,  //around 100 $
                 contract_adj_num: 5,
+                adjust_gap: 3600, // one hour
                 expand_gap: Vec::new(),
                 contract_gap: Vec::new(),
                 oracle_contract: Lazy::new(oracle_contract),
                 elc_contract: Lazy::new(elc_contract),
                 relp_contract: Lazy::new(relp_contract),
                 factory_contract: Lazy::new(factory_contract),
-                exchange_contract：Default::default();
+                exchange_contract: Default::default(),
             };
             instance
         }
@@ -211,12 +213,12 @@ mod pool {
             elp_amount
         }
 
-        /// 持有rELP即可领取奖励
+        /// anyone hold rELP can get reward
         #[ink(message)]
         pub fn get_reward(&mut self) -> Balance {
             let caller: AccountId= self.env().caller();
             let relp_amount = self.relp_contract.balance_of(caller);
-//            assert!(relp_amount > 0);
+            assert!(relp_amount > 0);
             let now_time: u128 = self.env().block_timestamp().into();
             let (hold_time, hold_realtime) = self.relp_contract.hold_time(caller, now_time);
             let hold_time_all: u128 = self.relp_contract.hold_time_all(now_time);
@@ -231,43 +233,64 @@ mod pool {
             elp_amount
         }
 
-        /// when price higher, call swap contract, swap elp for elc
-        /// note: 扩张，swap选择交易所待定，提供给外部做市商调用，保证每次小量交易, 记录时间间隔
+        /// when price higher:
+        /// 1.call swap contract, swap elc for elp
+        /// 2.raise ELC
         #[ink(message)]
         pub fn expand_elc(&mut self) {
             let elc_price: u128 = self.oracle_contract.elc_price();
-            let elcaim = self.elcaim;
-            assert!(elc_price > elcaim * 102 / 100);
+            let elp_price: u128 = self.oracle_contract.elp_price();
+            let lr = self.liability_ratio(); //计算LR
+            let elcaim_deviation = self.elcaim * 102 / 100;
+            assert!(elc_price > elcaim_deviation);
 
-            //调用swap，卖出ELC，买入ELP
-            if(self.exchange_contract == (&0)) {
-                let to_token = Default::default();
-                self.exchange_contract = self.factory_contract.get_exchange(elc_contract, to_token).unwrap_or(&0);
-                assert!((self.exchange_contract) != (&0));
-            }
-
-            let exchange_info: ExchangeInfo = self.exchange_contract.exchange_info();
-            let token_decimals = exchange_info.from_decimals;
-            let base: u128 = 10;
-            let adj_num = self.expand_adj_num;
-            let adj_bignum = adj_num * (base.pow(token_decimals));
-            let sold_amount = self.exchange_contract.swap_token_to_dot_input(adj_bignum);
-            assert!(sold_amount);
-            let buy_amount = self.exchange_contract.swap_token_to_dot_output(sold_amount);
-            assert!(buy_amount);
-
+            ///assert time > adjust duration
             let block_time:u128 = self.env().block_timestamp().into();
             let gap: u128 = block_time - self.last_expand_time;
+            assert!(gap >= self.adjust_gap);
+
+            let elc_balance = self.elc_contract.balance_of(self.env().account_id());
+            let to_token = Default::default();
+            let base: u128 = 10;
+
+            /// estimate ELC value: value per ELC in swap
+            let elp_amount_per_elc = self.exchange_contract.get_token_to_dot_input_price(base.pow(
+                self.elc_contract.token_decimals()
+            ));
+            let value_per_elc = elp_amount_per_elc * elp_price;
+            assert!(value_per_elc > self.elcaim * (base.pow(12))); //ELP decimals is 12, use elcaim price
+
+            let price_impact_for_swap = (value_per_elc - elcaim_deviation * (base.pow(12))) / value_per_elc * 100;
+            let price_impact_for_expand = (elc_price - self.elcaim) / self.elcaim * 100;
+            let elc_amount: Balance = self.elc_contract.total_supply();
+            let expand_amount = price_impact_for_expand * elc_amount / 100;
+
+            if elc_balance > 0 {
+                ///swap elc for elp
+                if(self.exchange_contract == (&0)) {
+                    self.exchange_contract = self.factory_contract.get_exchange(elc_contract, to_token).unwrap_or(&0);
+                    assert!((self.exchange_contract) != (&0));
+                }
+                let adj_num = self.expand_adj_num;
+                let adj_bignum = adj_num * (base.pow(token_decimals));
+                self.elc_contract.approve(self.exchange_contract, adj_bignum);
+                let sold_amount = self.exchange_contract.swap_token_to_dot_input(adj_bignum);
+                self.expand_gap.push((gap, adj_bignum));
+            } else {
+                ///raise ELC
+                if lr > 70 {
+//                    self.elc_contract.mint(self.relp_contract, expand_amount);
+                    self.relp_contract.mint_to_all(expand_amount * 95 / 100);
+                    /// 95 allocate to ELC holders
+                    
+                    /// 5% allocate to ELP reserve
+                }
+            }
             self.last_expand_time = block_time;
-            self.expand_gap.push((gap, adj_bignum));
             self.env().emit_event(ExpandEvent {
                 gaptime: gap,
                 elc_amount: adj_bignum,
-            }
-
-            ///zengfa
-
-
+            });
         }
 
         /// when price lower, call swap contract, swap elc for elp
