@@ -47,6 +47,5 @@ std = [
      "relp/std",
      "oracle/std",
 	 "exchange2/std",
-	 "factory/std",
 ]
 ink-as-dependency = []

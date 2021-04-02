@@ -20,6 +20,9 @@ mod pool {
     use ink_storage::{
         lazy::Lazy,
     };
+    #[cfg(not(feature = "ink-as-dependency"))]
+    use ink_prelude::string::String;
+
 
     #[ink(storage)]
     pub struct Pool {
@@ -245,18 +248,17 @@ mod pool {
             let elcaim_deviation = self.elcaim * 102 / 100;
             assert!(elc_price > elcaim_deviation);
 
-            ///assert time > adjust duration
+            //assert time > adjust duration
             let block_time:u128 = self.env().block_timestamp().into();
             let gap: u128 = block_time - self.last_expand_time;
             assert!(gap >= self.adjust_gap);
 
             let elc_balance = self.elc_contract.balance_of(self.env().account_id());
-            let to_token = Default::default();
             let base: u128 = 10;
 
-            /// estimate ELC value: value per ELC in swap
+            // estimate ELC value: value per ELC in swap
             let elc_decimals = self.elc_contract.token_decimals().unwrap_or(0);
-            let elp_amount_per_elc = self.exchange_contract.get_token_to_dot_input_price(base.pow(elc_decimals));
+            let elp_amount_per_elc = self.exchange_contract.get_token_to_dot_input_price(base.pow(elc_decimals.into()));
             let value_per_elc = elp_amount_per_elc * elp_price;
             assert!(value_per_elc > self.elcaim * (base.pow(12))); //ELP decimals is 12, use elcaim price
 
@@ -266,14 +268,14 @@ mod pool {
             let expand_amount = price_impact_for_expand * elc_amount / 100;
             let mut elp_amount:u128 = 0;
             if elc_balance > expand_amount {
-                ///swap elc for elp
+                //swap elc for elp
 //                if(self.exchange_contract == (&0)) {
 //                    self.exchange_contract = self.factory_contract.get_exchange(elc_contract, to_token).unwrap_or(&0);
 //                    assert!((self.exchange_contract) != (&0));
 //                }
 //                let adj_num = self.expand_adj_num;
 //                let adj_bignum = adj_num * (base.pow(token_decimals));
-                self.elc_contract.approve(self.exchange_accountid, expand_amount);
+                assert!(self.elc_contract.approve(self.exchange_accountid, expand_amount).is_ok());
                 elp_amount = self.exchange_contract.swap_token_to_dot_input(expand_amount);
                 assert!(elp_amount > 0);
                 self.env().emit_event(ExpandEvent {
@@ -282,17 +284,18 @@ mod pool {
                     elp_amount: elp_amount,
                 });
             } else {
-                ///raise ELC
+                //raise ELC
                 if lr > 70 {
-                    /// 95 allocate to ELC holders
+                    // 95 allocate to ELC holders
                     let mint_to_holders_amount:u128 = expand_amount * 95 / 100;
                     let mint_to_reserve_amount:u128 = expand_amount * 5 / 100;
                     assert!(self.elc_contract.mint(self.relp_accountid, mint_to_holders_amount).is_ok());
                     assert!(self.relp_contract.mint_to_holders(mint_to_holders_amount).is_ok());
 
-                    /// 5% allocate to ELP reserve
-                    assert!(self.elc_contract.mint(self.env().account_id(), mint_to_reserve_amount).is_ok());
-                    assert!(self.elc_contract.approve(self.exchange_accountid, expand_amount));
+                    // 5% allocate to ELP reserve
+                    let self_account = self.env().account_id();
+                    assert!(self.elc_contract.mint(self_account, mint_to_reserve_amount).is_ok());
+                    assert!(self.elc_contract.approve(self.exchange_accountid, expand_amount).is_ok());
                     elp_amount = self.exchange_contract.swap_token_to_dot_input(mint_to_reserve_amount);
                     assert!(elp_amount > 0);
                     self.env().emit_event(ExpandEvent {
@@ -306,7 +309,7 @@ mod pool {
             self.risk_reserve += elp_amount;
         }
 
-        /// when price lower, call swap contract, swap elc for elp
+        // when price lower, call swap contract, swap elc for elp
         #[ink(message, payable)]
         pub fn contract_elc(&mut self){
             let elc_price: u128 = self.oracle_contract.elc_price();
@@ -314,14 +317,15 @@ mod pool {
             let elcaim_deviation = self.elcaim * 98 / 100;
             assert!(elc_price < elcaim_deviation);
 
-            ///assert time > adjust duration
+            //assert time > adjust duration
             let block_time:u128 = self.env().block_timestamp().into();
             let gap: u128 = block_time - self.last_contract_time;
             assert!(gap >= self.adjust_gap);
 
-            /// estimate ELC value: value per ELC in swap
+            // estimate ELC value: value per ELC in swap
+            let base: u128 = 10;
             let elp_amount_per_elc = self.exchange_contract.get_token_to_dot_input_price(base.pow(
-                self.elc_contract.token_decimals()
+                self.elc_contract.token_decimals().unwrap_or(0).into()
             ));
             let value_per_elc = elp_amount_per_elc * elp_price;
             assert!(value_per_elc < self.elcaim * (base.pow(12))); //ELP decimals is 12, use elcaim price
@@ -330,7 +334,7 @@ mod pool {
             let elc_amount: Balance = self.elc_contract.total_supply();
             let contract_amount = price_impact_for_expand * elc_amount / 100;
 
-            /// elp decimals need to be same with elc decimals
+            // elp decimals need to be same with elc decimals
             let elp_needed = self.exchange_contract.get_dot_to_token_output_price(contract_amount);
 //            if(self.exchange_contract == (&0)) {
 //                let to_token = Default::default();
@@ -338,7 +342,7 @@ mod pool {
 //                assert!((self.exchange_contract) != (&0));
 //            }
             if self.risk_reserve > elp_needed {
-                assert_eq!(self.transfer(self.exchange_contract, elp_needed),Ok(()));
+                assert!(self.env().transfer(self.exchange_accountid, elp_needed).is_ok());
                 let elc_amount = self.exchange_contract.swap_dot_to_token_input();
                 assert!(elc_amount > 0);
                 self.env().emit_event(ContractEvent {
@@ -348,10 +352,10 @@ mod pool {
                 });
                 self.risk_reserve -= elp_needed;
             } else {
-                ///if risk reserve not enough, then use self.risk_reserve + reserve * 2% per day
+                //if risk reserve not enough, then use self.risk_reserve + reserve * 2% per day
                 if (self.risk_reserve + self.reserve * 2 / 100) > elp_needed {
                     assert!(gap >= (24 * 60 * 60)); // one day later can call this
-                    assert_eq!(self.transfer(self.exchange_contract, elp_needed),Ok(()));
+                    assert!(self.env().transfer(self.exchange_accountid, elp_needed).is_ok());
                     let elc_amount = self.exchange_contract.swap_dot_to_token_input();
                     assert!(elc_amount > 0);
                     self.env().emit_event(ContractEvent {
