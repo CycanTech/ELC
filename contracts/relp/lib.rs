@@ -15,6 +15,8 @@ mod relp {
         lazy::Lazy,
     };
     use ink_storage::{traits::{PackedLayout, SpreadLayout}};
+    #[cfg(not(feature = "ink-as-dependency"))]
+    use ink_env::call::FromAccountId;
 
     /// The ERC-20 error types.
     #[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
@@ -426,13 +428,13 @@ mod relp {
         }
 
         #[ink(message)]
-        pub fn mint_to_holders(&self, expand_amount:u128) ->  Result<()>  {
+        pub fn mint_to_holders(&mut self, expand_amount:u128) ->  Result<()>  {
             self.only_owner();
             for holder in self.holders.iter() {
                 let total_supply = self.total_supply();
-                let balance = self.balanceOf(&holder);
+                let balance = self.balance_of(*holder);
                 let mint_amount = expand_amount * balance / total_supply;
-                assert!(self.elc_contract.transfer(&holder, mint_amount).is_ok());
+                assert!(self.elc_contract.transfer(*holder, mint_amount).is_ok());
             }
             Ok(())
         }
@@ -455,3 +457,4 @@ mod relp {
         }
     }
 }
+
