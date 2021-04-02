@@ -5,6 +5,7 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod relp {
+    use elc::ELC;
     use ink_prelude::{string::String};
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_prelude::{vec, vec::Vec};
@@ -62,6 +63,7 @@ mod relp {
         transferlogs: StorageHashMap<AccountId, Vec<Transferlog>>,
         /// record all relp holders
         holders: Vec<AccountId>,
+        elc_contract: Lazy<ELC>,
     }
 
     /// Event emitted when a token transfer occurs.
@@ -105,10 +107,10 @@ mod relp {
 
 
     impl RELP {
-        //rELP要有初始发行量，如果没有，需要矿池一笔初始化交易
         #[ink(constructor)]
         pub fn new(
             initial_supply: Balance,
+            elc_token: AccountId,
 //            name: Option<String>,
 //            symbol: Option<String>,
 //            decimals: Option<u8>,
@@ -120,6 +122,7 @@ mod relp {
             let name: Option<String> = Some(String::from("Risk Reserve of ELP"));
             let symbol: Option<String> = Some(String::from("rELP"));
             let decimals: Option<u8> = Some(8);
+            let elc_contract: ELC = FromAccountId::from_account_id(elc_token);
             let instance = Self {
                 total_supply: Lazy::new(initial_supply),
                 balances,
@@ -130,6 +133,7 @@ mod relp {
                 owner: caller,
                 transferlogs: StorageHashMap::new(),
                 holders: Vec::new(),
+                elc_contract: Lazy::new(elc_contract),
             };
             Self::env().emit_event(Transfer {
                 from: None,
@@ -304,7 +308,6 @@ mod relp {
                 timelog: now_time,
             };
             if let Some(from_log) = self.transferlogs.get_mut(&user) {
-//                from_log.push(ticket);
                 self.transferlogs.take(&user);
             } else {
                 self.transferlogs.insert(user, vec![transferlog_from]);
@@ -368,7 +371,6 @@ mod relp {
             };
 
             if let Some(from_log) = self.transferlogs.get_mut(&from) {
-//                from_log.push(ticket);
                 self.transferlogs.take(&from);
             } else {
                 self.transferlogs.insert(from, vec![transferlog_from]);
@@ -382,6 +384,20 @@ mod relp {
                 to_log.push(transferlog_to);
             } else {
                 self.transferlogs.insert(to, vec![transferlog_to]);
+            }
+        }
+
+        #[ink(message)]
+        pub fn update_hold_time_for_reward(&mut self, from: AccountId, value: Balance, now_time: u128)  {
+            self.only_owner(); //owner only
+            let mut transferlog_from = Transferlog {
+                amount: self.balances.get(&from).copied().unwrap_or(0),
+                timelog: now_time,
+            };
+            if let Some(from_log) = self.transferlogs.get_mut(&from) {
+                self.transferlogs.take(&from);
+            } else {
+                self.transferlogs.insert(from, vec![transferlog_from]);
             }
         }
 
@@ -407,6 +423,18 @@ mod relp {
                 }
             }
             holdtime
+        }
+
+        #[ink(message)]
+        pub fn mint_to_holders(&self, expand_amount:u128) ->  Result<()>  {
+            self.only_owner();
+            for holder in self.holders.iter() {
+                let total_supply = self.total_supply();
+                let balance = self.balanceOf(&holder);
+                let mint_amount = expand_amount * balance / total_supply;
+                assert!(self.elc_contract.transfer(&holder, mint_amount).is_ok());
+            }
+            Ok(())
         }
 
         fn only_owner(&self) {
