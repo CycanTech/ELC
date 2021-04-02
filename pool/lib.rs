@@ -234,7 +234,7 @@ mod pool {
         pub fn expand_elc(&mut self) {
             let elc_price: u128 = self.oracle_contract.elc_price();
             let elp_price: u128 = self.oracle_contract.elp_price();
-            let lr = self.liability_ratio(); 
+            let lr = self.liability_ratio();
             let elcaim_deviation = self.elcaim * 102 / 100;
             assert!(elc_price > elcaim_deviation);
 
@@ -258,7 +258,7 @@ mod pool {
             let price_impact_for_expand = (elc_price - self.elcaim) / self.elcaim * 100;
             let elc_amount: Balance = self.elc_contract.total_supply();
             let expand_amount = price_impact_for_expand * elc_amount / 100;
-
+            let mut elp_amount:u128 = 0;
             if elc_balance > expand_amount {
                 ///swap elc for elp
                 if(self.exchange_contract == (&0)) {
@@ -268,7 +268,7 @@ mod pool {
 //                let adj_num = self.expand_adj_num;
 //                let adj_bignum = adj_num * (base.pow(token_decimals));
                 self.elc_contract.approve(self.exchange_contract, expand_amount);
-                let elp_amount = self.exchange_contract.swap_token_to_dot_input(expand_amount);
+                elp_amount = self.exchange_contract.swap_token_to_dot_input(expand_amount);
                 assert!(elp_amount > 0);
                 self.env().emit_event(ExpandEvent {
                     expand_type: String::from("swap"),
@@ -286,7 +286,8 @@ mod pool {
 
                     /// 5% allocate to ELP reserve
                     assert!(self.elc_contract.mint(self.env().account_id(), mint_to_reserve_amount).is_ok());
-                    let elp_amount = self.exchange_contract.swap_token_to_dot_input(mint_to_reserve_amount);
+                    assert!(self.elc_contract.approve(self.exchange_contract, expand_amount));
+                    elp_amount = self.exchange_contract.swap_token_to_dot_input(mint_to_reserve_amount);
                     assert!(elp_amount > 0);
                     self.env().emit_event(ExpandEvent {
                         expand_type: String::from("raise"),
