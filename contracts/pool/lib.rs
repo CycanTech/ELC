@@ -129,7 +129,7 @@ mod pool {
             let (relp_tokens, elc_tokens) = self.compute_liquidity(elp_amount);
             if elc_tokens != 0 {
                 assert!(self
-                    .relp_contract
+                    .elc_contract
                     .mint(caller, elc_tokens)
                     .is_ok());
             }
@@ -261,8 +261,8 @@ mod pool {
             let value_per_elc = elp_amount_per_elc * elp_price;
             assert!(value_per_elc > self.elcaim * (base.pow(12))); //ELP decimals is 12, use elcaim price
 
-            let price_impact_for_swap = (value_per_elc - elcaim_deviation * (base.pow(12))) / value_per_elc * 100;
-            let price_impact_for_expand = (elc_price - self.elcaim) / self.elcaim * 100;
+            let price_impact_for_swap = (value_per_elc - elcaim_deviation * (base.pow(12))) * 100 / value_per_elc;
+            let price_impact_for_expand = (elc_price - self.elcaim) * 100 / self.elcaim ;
             let elc_amount: Balance = self.elc_contract.total_supply();
             let expand_amount = price_impact_for_expand * elc_amount / 100;
             let mut elp_amount:u128 = 0;
@@ -329,7 +329,7 @@ mod pool {
             let value_per_elc = elp_amount_per_elc * elp_price;
             assert!(value_per_elc < self.elcaim * (base.pow(12))); //ELP decimals is 12, use elcaim price
 
-            let price_impact_for_expand = (self.elcaim - elc_price) / self.elcaim * 100;
+            let price_impact_for_expand = (self.elcaim - elc_price) * 100 / self.elcaim;
             let elc_amount: Balance = self.elc_contract.total_supply();
             let contract_amount = price_impact_for_expand * elc_amount / 100;
 
@@ -388,7 +388,7 @@ mod pool {
             let elc_price: u128 = self.oracle_contract.elc_price();
             let elp_amount: Balance = self.reserve;
             let elc_amount: Balance = self.elc_contract.total_supply();
-            let lr =  elc_amount * elc_price/(elp_price * elp_amount) * 100; //100 as base
+            let lr =  elc_amount * elc_price  * 100 /(elp_price * elp_amount); //100 as base
             lr
         }
 
