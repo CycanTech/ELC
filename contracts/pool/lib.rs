@@ -88,7 +88,6 @@ mod pool {
     impl Pool {
         #[ink(constructor)]
         pub fn new(
-            reserve: Balance,
             risk_reserve: Balance,
             elc_token: AccountId,
             relp_token: AccountId,
@@ -103,7 +102,7 @@ mod pool {
             let instance = Self {
                 elcaim: 100,
                 k: 5, //0.00005 * 100000
-                reserve: reserve,
+                reserve: 0,
                 risk_reserve: risk_reserve,
                 k_update_time: blocktime,
                 last_expand_time:  blocktime,
