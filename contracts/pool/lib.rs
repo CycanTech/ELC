@@ -100,7 +100,7 @@ mod pool {
             let exchange_contract: PatraExchange2 = FromAccountId::from_account_id(exchange_account);
             let blocktime = Self::env().block_timestamp().into();
             let instance = Self {
-                elcaim: 100,
+                elcaim: 100000,
                 k: 5, //0.00005 * 100000
                 reserve: 0,
                 risk_reserve: risk_reserve,
@@ -161,14 +161,14 @@ mod pool {
                 let elp_amount_threshold: Balance  = elc_amount * elc_price * 100 / (elp_price * 30);
                 if elp_amount_deposit < elp_amount_threshold {
                     relp_tokens = elp_price * elp_amount_deposit / relp_price;
-                    elc_tokens = elp_price * elp_amount_deposit * (lr/100000) / relp_price;
+                    elc_tokens = elp_price * elp_amount_deposit * lr / relp_price / 100;
                 } else {
                     relp_tokens = elp_price * elp_amount_threshold / relp_price +
-                        elp_price * (elp_amount_deposit - elp_amount_threshold) * (1- lr/100000)/ relp_price;
-                    elc_tokens = elp_price * elp_amount_threshold * (lr/100000) / relp_price;
+                        elp_price * (elp_amount_deposit - elp_amount_threshold) * (100 - lr) / relp_price / 100;
+                    elc_tokens = elp_price * elp_amount_threshold * lr / relp_price / 100;
                 }
             } else {
-                relp_tokens = elp_price * elp_amount_deposit * (1- lr/100000)/ relp_price;
+                relp_tokens = elp_price * elp_amount_deposit * (100 - lr) / relp_price / 100;
             };
             (relp_tokens, elc_tokens)
         }
@@ -199,7 +199,7 @@ mod pool {
                 //compute ELP amount
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / (p(ELP) * (1-LR))
                 // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP) / (1-LR))
-                elp_amount =  relp_amount * self.reserve / relp_balance / (1 - lr/100000);
+                elp_amount =  relp_amount * self.reserve * 100 / relp_balance / (100 - lr);
             }
 
             //redeem ELP
@@ -244,7 +244,7 @@ mod pool {
             let elc_price: u128 = self.oracle_contract.elc_price();
             let elp_price: u128 = self.oracle_contract.elp_price();
             let lr = self.liability_ratio();
-            let elcaim_deviation = self.elcaim * 102 / 100;
+            let elcaim_deviation = self.elcaim * 102 / 100000;
             assert!(elc_price > elcaim_deviation);
 
             //assert time > adjust duration
@@ -259,10 +259,10 @@ mod pool {
             let elc_decimals = self.elc_contract.token_decimals().unwrap_or(0);
             let elp_amount_per_elc = self.exchange_contract.get_token_to_dot_input_price(base.pow(elc_decimals.into()));
             let value_per_elc = elp_amount_per_elc * elp_price;
-            assert!(value_per_elc > self.elcaim * (base.pow(12))); //ELP decimals is 12, use elcaim price
+            assert!(value_per_elc > self.elcaim * (base.pow(9))); //ELP decimals is 12, use elcaim price including decimals 5
 
             let price_impact_for_swap = (value_per_elc - elcaim_deviation * (base.pow(12))) * 100 / value_per_elc;
-            let price_impact_for_expand = (elc_price - self.elcaim) * 100 / self.elcaim ;
+            let price_impact_for_expand = (elc_price*1000 - self.elcaim) * 100 / self.elcaim ;
             let elc_amount: Balance = self.elc_contract.total_supply();
             let expand_amount = price_impact_for_expand * elc_amount / 100;
             let mut elp_amount:u128 = 0;
@@ -313,7 +313,7 @@ mod pool {
         pub fn contract_elc(&mut self){
             let elc_price: u128 = self.oracle_contract.elc_price();
             let elp_price: u128 = self.oracle_contract.elp_price();
-            let elcaim_deviation = self.elcaim * 98 / 100;
+            let elcaim_deviation = self.elcaim * 98 / 100000;
             assert!(elc_price < elcaim_deviation);
 
             //assert time > adjust duration
@@ -327,9 +327,9 @@ mod pool {
                 self.elc_contract.token_decimals().unwrap_or(0).into()
             ));
             let value_per_elc = elp_amount_per_elc * elp_price;
-            assert!(value_per_elc < self.elcaim * (base.pow(12))); //ELP decimals is 12, use elcaim price
+            assert!(value_per_elc < self.elcaim * (base.pow(9))); //ELP decimals is 12, use elcaim price including decimals 5
 
-            let price_impact_for_expand = (self.elcaim - elc_price) * 100 / self.elcaim;
+            let price_impact_for_expand = (self.elcaim - elc_price*1000) * 100 / self.elcaim;
             let elc_amount: Balance = self.elc_contract.total_supply();
             let contract_amount = price_impact_for_expand * elc_amount / 100;
 
