@@ -428,13 +428,15 @@ mod relp {
         }
 
         #[ink(message)]
-        pub fn mint_to_holders(&mut self, expand_amount:u128) ->  Result<()>  {
+        pub fn mint_to_holders(&mut self, expand_amount:u128) -> Result<()>  {
             self.only_owner();
+            let total_supply = self.total_supply();
             for holder in self.holders.iter() {
-                let total_supply = self.total_supply();
                 let balance = self.balance_of(*holder);
                 let mint_amount = expand_amount * balance / total_supply;
-                assert!(self.elc_contract.transfer(*holder, mint_amount).is_ok());
+                if mint_amount > 0 {
+                    assert!(self.elc_contract.transfer(*holder, mint_amount).is_ok());
+                }
             }
             Ok(())
         }
@@ -446,7 +448,7 @@ mod relp {
         /// Contract owner.
         #[ink(message)]
         pub fn owner(&self) -> AccountId {
-            self.owner
+            self.owner.clone()
         }
 
         /// transfer contract ownership to new owner.
