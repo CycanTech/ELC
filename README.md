@@ -32,13 +32,14 @@ rustup target add wasm32-unknown-unknown --toolchain nightly
 ```
 ### Installing a substrate node(support ink! 3.0)
 
-Such as canvas node
+For example, installing canvas node
 ```
 $ cargo install canvas-node --git https://github.com/paritytech/canvas-node.git --force --locked
 ```
 
 ### Run a local node
 ```
+cd canvas-node
 cargo run --release -- --dev
 ```
 

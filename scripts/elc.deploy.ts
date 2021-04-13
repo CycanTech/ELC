@@ -75,13 +75,13 @@ async function run() {
   const result = await elcContract.tx.transferOwnership(poolContract.address, {
     signer: signer
   });
-  console.log('transferOwnership: ', result.output.toHuman());
+  console.log('transferOwnership: ', result.output);
 
   console.log('transferOwnership....................');
   const result2 = await relpContract.tx.transferOwnership(poolContract.address, {
     signer: signer
   });
-  console.log('transferOwnership: ', result2.output.toHuman());
+  console.log('transferOwnership: ', result2.output);
 
   api.disconnect();
 }

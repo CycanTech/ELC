@@ -15,7 +15,7 @@ async function run() {
     const balance = await api.query.system.account(signer.address);
     console.log('Balance: ', balance.toHuman());
 
-    const elc = api.createType('AccountId', "5G8VknFrQSbE47FKTd5kFv5KbwnVLCyY94CmWSHLyoUoEWEh");
+    const elc = api.createType('AccountId', "5CHR1jNLjW81FfaJxmcbdU64cQXTMkYpuegeroB9eBSG4bnP");
     const relp = api.createType('AccountId', "5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG");
     const elcContract = await getContractAt('elc', elc, signer);
     const owner_res = await elcContract.query.owner();
@@ -37,12 +37,18 @@ async function run() {
     // console.log('symbol: ', symbol.output.toJSON)
     console.log('symbol: ', symbol.output.toHuman());
 
-    const pool = api.createType('AccountId', "5DHmTkUFUvpSFS5f7Y5FXwGVVMUNbAfYiYqPA4ssHDKNgZSy");
-    console.log('transferOwnership....................');
-    const result = await elcContract.tx.transferOwnership(pool, {
-        signer: signer
-    });
-    console.log('transferOwnership: ', result.output.toHuman());
+    // const pool = api.createType('AccountId', "5EWCG29Nn3CNxFkSKWPpSBJoW7xzQi8TXeRRoKa1SF5yiTej");
+    // console.log('transferOwnership....................');
+    // const result = await elcContract.tx.transferOwnership(pool, {
+    //     signer: signer
+    // });
+    // console.log('transferOwnership: ', result.output);
+
+    // console.log('transferOwnership....................');
+    // const result2 = await relpContract.tx.transferOwnership(pool.address, {
+    //     signer: signer
+    // });
+    // console.log('transferOwnership: ', result2.output);
 
     api.disconnect();
 }
