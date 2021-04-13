@@ -294,6 +294,13 @@
     redspot "^0.10.1"
     sync-request "^6.1.0"
 
+"@redspot/jupiter@^0.10.1":
+  version "0.10.1"
+  resolved "https://registry.yarnpkg.com/@redspot/jupiter/-/jupiter-0.10.1.tgz#94a11ff43d80953594469d8b7ac52f0643ea4fbc"
+  integrity sha512-/fp6vuL/9P4LN8xgOqMJ6faw9RxmX725fE1oFhpMrvQhvCKfwNmheHdtIbrigvyUWllw+26KXbHPbzKf7ip7vw==
+  dependencies:
+    redspot "^0.10.1"
+
 "@redspot/patract@^0.10.1":
   version "0.10.1"
   resolved "https://registry.yarnpkg.com/@redspot/patract/-/patract-0.10.1.tgz#5d105b9bfed601aeff27ab11e17a22b6cdd319b2"

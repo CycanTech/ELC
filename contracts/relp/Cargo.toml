@@ -42,3 +42,6 @@ std = [
     "elc/std",
 ]
 ink-as-dependency = []
+
+[profile.release]
+overflow-checks = false

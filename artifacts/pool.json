@@ -1,7 +1,7 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0xa061ac45eee63dc49bbf1a4ef78374d18fd49cf9147c4108871591a5dae83869",
+    "hash": "0x0e7e37075b1cfeed506d1db398cadefa8d9d9b0b2ae698595cd53dc28bafff65",
     "language": "ink! 3.0.0-rc3",
     "compiler": "rustc 1.52.0-nightly"
   },
@@ -16,15 +16,6 @@
     "constructors": [
       {
         "args": [
-          {
-            "name": "reserve",
-            "type": {
-              "displayName": [
-                "Balance"
-              ],
-              "type": 1
-            }
-          },
           {
             "name": "risk_reserve",
             "type": {

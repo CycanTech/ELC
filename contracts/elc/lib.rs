@@ -142,7 +142,7 @@ mod elc {
         /// Returns the account balance for the specified `owner`.
         ///
         /// Returns `0` if the account is non-existent.
-        #[ink(message)]
+        #[ink(message, selector = "0x0f755a56")]
         pub fn balance_of(&self, owner: AccountId) -> Balance {
             self.balances.get(&owner).copied().unwrap_or(0)
         }
@@ -155,7 +155,7 @@ mod elc {
         ///
         /// Returns `InsufficientBalance` error if there are not enough tokens on
         /// the caller's account balance.
-        #[ink(message)]
+        #[ink(message, selector = "0x84a15da1")]
         pub fn transfer(&mut self, to: AccountId, value: Balance) -> Result<()> {
             let from = self.env().caller();
             self.transfer_from_to(from, to, value)
