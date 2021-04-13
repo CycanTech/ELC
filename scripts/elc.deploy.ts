@@ -72,12 +72,16 @@ async function run() {
   // await elcContract.tx['elc,transferOwnership'](poolContract.address);
   // await relpContract.tx['relp,transferOwnership'](poolContract.address);
   console.log('transferOwnership....................');
-  const result = await elcContract.tx.transferOwnership(poolContract.address.toString());
-  console.log('transferOwnership: ', result);
-  
+  const result = await elcContract.tx.transferOwnership(poolContract.address, {
+    signer: signer
+  });
+  console.log('transferOwnership: ', result.output.toHuman());
+
   console.log('transferOwnership....................');
-  const result2 = await relpContract.tx.transferOwnership(poolContract.address.toString());
-  console.log('transferOwnership: ', result2);
+  const result2 = await relpContract.tx.transferOwnership(poolContract.address, {
+    signer: signer
+  });
+  console.log('transferOwnership: ', result2.output.toHuman());
 
   api.disconnect();
 }

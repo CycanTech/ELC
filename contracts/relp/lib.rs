@@ -448,7 +448,7 @@ mod relp {
         /// Contract owner.
         #[ink(message)]
         pub fn owner(&self) -> AccountId {
-            self.owner.clone()
+            self.owner
         }
 
         /// transfer contract ownership to new owner.
