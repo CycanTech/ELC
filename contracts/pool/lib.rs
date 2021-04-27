@@ -18,9 +18,31 @@ mod pool {
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{
         lazy::Lazy,
+        traits::{PackedLayout, SpreadLayout},
     };
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_prelude::string::String;
+
+    #[derive(
+    Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout,
+    )]
+    #[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
+    )]
+    pub struct PoolInfo {
+        elcaim: u128,
+        k: u128, //inflation factor
+        reserve: Balance,
+        risk_reserve: Balance,
+        k_update_time: u128,
+        last_expand_time: u128,
+        last_contract_time: u128,
+        adjust_gap: u128,
+        elc_accountid: AccountId,
+        relp_accountid: AccountId,
+        exchange_accountid: AccountId,
+    }
 
     #[ink(storage)]
     pub struct Pool {
@@ -425,5 +447,23 @@ mod pool {
 
         #[ink(message)]
         pub fn elp_risk_reserve(&self) -> Balance { self.risk_reserve.clone() }
+
+        /// define a struct returns all pool states
+        #[ink(message)]
+        pub fn pool_info(&self) -> PoolInfo {
+            PoolInfo {
+                elcaim: self.elcaim,
+                k: self.k, //inflation factor
+                reserve: self.reserve,
+                risk_reserve: self.risk_reserve,
+                k_update_time: self.k_update_time,
+                last_expand_time: self.last_expand_time,
+                last_contract_time: self.last_contract_time,
+                adjust_gap: self.adjust_gap,
+                elc_accountid: self.elc_accountid,
+                relp_accountid: self.relp_accountid,
+                exchange_accountid: self.exchange_accountid,
+            }
+        }
     }
 }
