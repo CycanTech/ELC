@@ -224,7 +224,7 @@ mod elc {
             }
 
             let user_balance = self.balance_of(user);
-            self.balances.insert(user, user_balance + amount);
+            self.balances.insert(user, user_balance.saturating_add(amount));
             *self.total_supply += amount;
             self.env().emit_event(Mint { user, amount });
             Ok(())
@@ -245,7 +245,7 @@ mod elc {
                 return Err(Error::InsufficientBalance);
             }
 
-            self.balances.insert(user, user_balance - amount);
+            self.balances.insert(user, user_balance.saturating_sub(amount));
             *self.total_supply -= amount;
             self.env().emit_event(Burn { user, amount });
             Ok(())

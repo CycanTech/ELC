@@ -113,9 +113,6 @@ mod relp {
         pub fn new(
             initial_supply: Balance,
             elc_token: AccountId,
-//            name: Option<String>,
-//            symbol: Option<String>,
-//            decimals: Option<u8>,
         ) -> Self {
             let caller = Self::env().caller();
             let mut balances = StorageHashMap::new();
@@ -137,6 +134,7 @@ mod relp {
                 holders: Vec::new(),
                 elc_contract: Lazy::new(elc_contract),
             };
+
             Self::env().emit_event(Transfer {
                 from: None,
                 to: Some(caller),
@@ -264,16 +262,7 @@ mod relp {
             }
 
             //deal with transferlog
-            let now_time: u128 = self.env().block_timestamp().into();
-            let mut transferlog_to = Transferlog {
-                amount: amount,
-                timelog: now_time,
-            };
-            if let Some(to_log) = self.transferlogs.get_mut(&user) {
-                to_log.push(transferlog_to);
-            } else {
-                self.transferlogs.insert(user, vec![transferlog_to]);
-            }
+            self.push_holder_log(user, amount);
             Ok(())
         }
 
@@ -304,15 +293,7 @@ mod relp {
             }
 
             //deal with transferlog
-            let now_time: u128 = self.env().block_timestamp().into();
-            let mut transferlog_from = Transferlog {
-                amount: self.balances.get(&user).copied().unwrap_or(0),
-                timelog: now_time,
-            };
-            if let Some(from_log) = self.transferlogs.get_mut(&user) {
-                self.transferlogs.take(&user);
-                self.transferlogs.insert(user, vec![transferlog_from]);
-            }
+            self.take_holder_log(user);
             Ok(())
         }
 
@@ -349,7 +330,8 @@ mod relp {
                 self.holders.push(to);
             }
 
-            self.update_hold_time(from, to, value);
+            self.take_holder_log(from);
+            self.push_holder_log(to, value);
             self.env().emit_event(Transfer {
                 from: Some(from),
                 to: Some(to),
@@ -358,8 +340,8 @@ mod relp {
             Ok(())
         }
 
-        ///every unit hold time, unit per second
-        fn update_hold_time(&mut self, from: AccountId, to: AccountId, value: Balance) {
+        ///if user is transfer sender, remove previous transferlog, then update
+        fn take_holder_log(&mut self, from: AccountId) {
             let now_time: u128 = self.env().block_timestamp().into();
 
             let mut transferlog_from = Transferlog {
@@ -371,7 +353,11 @@ mod relp {
                 self.transferlogs.take(&from);
                 self.transferlogs.insert(from, vec![transferlog_from]);
             }
+        }
 
+        ///if user is transfer receiver, push new transferlog
+        fn push_holder_log(&mut self, to: AccountId, value: Balance) {
+            let now_time: u128 = self.env().block_timestamp().into();
             let mut transferlog_to = Transferlog {
                 amount: value,
                 timelog: now_time,
@@ -402,8 +388,8 @@ mod relp {
             let mut hold_realtime: u128 = 0;
             let logs = self.transferlogs.get(&user).unwrap();
             for log in logs.iter() {
-                holdtime = holdtime + log.amount * (now_time - log.timelog);
-                hold_realtime = hold_realtime + (now_time - log.timelog);
+                holdtime = holdtime.saturating_add(log.amount.saturating_mul(now_time.saturating_sub(log.timelog)));
+                hold_realtime = hold_realtime.saturating_add(now_time.saturating_sub(log.timelog));
             }
             (holdtime, hold_realtime)
         }
@@ -414,7 +400,7 @@ mod relp {
             for holder in self.holders.iter() {
                 let logs = self.transferlogs.get(&holder).unwrap();
                 for log in logs.iter() {
-                    holdtime = holdtime + log.amount * (now_time - log.timelog);
+                    holdtime = holdtime.saturating_add(log.amount.saturating_mul(now_time.saturating_sub(log.timelog)));
                 }
             }
             holdtime
@@ -426,7 +412,7 @@ mod relp {
             let total_supply = self.total_supply();
             for holder in self.holders.iter() {
                 let balance = self.balance_of(*holder);
-                let mint_amount = expand_amount * balance / total_supply;
+                let mint_amount = expand_amount.saturating_mul(balance) / total_supply;
                 if mint_amount > 0 {
                     assert!(self.elc_contract.transfer(*holder, mint_amount).is_ok());
                 }
