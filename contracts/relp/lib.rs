@@ -311,7 +311,6 @@ mod relp {
             };
             if let Some(from_log) = self.transferlogs.get_mut(&user) {
                 self.transferlogs.take(&user);
-            } else {
                 self.transferlogs.insert(user, vec![transferlog_from]);
             }
             Ok(())
@@ -361,10 +360,6 @@ mod relp {
 
         ///every unit hold time, unit per second
         fn update_hold_time(&mut self, from: AccountId, to: AccountId, value: Balance) {
-//            let log_len = self.transferlogs.get(&from).unwrap().len().try_into().unwrap();
-//            if log_len > 0 {
-//                assert_eq!(map.remove(&from), None);
-//            }
             let now_time: u128 = self.env().block_timestamp().into();
 
             let mut transferlog_from = Transferlog {
@@ -374,7 +369,6 @@ mod relp {
 
             if let Some(from_log) = self.transferlogs.get_mut(&from) {
                 self.transferlogs.take(&from);
-            } else {
                 self.transferlogs.insert(from, vec![transferlog_from]);
             }
 
@@ -398,7 +392,6 @@ mod relp {
             };
             if let Some(from_log) = self.transferlogs.get_mut(&from) {
                 self.transferlogs.take(&from);
-            } else {
                 self.transferlogs.insert(from, vec![transferlog_from]);
             }
         }
