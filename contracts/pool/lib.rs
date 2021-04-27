@@ -149,8 +149,10 @@ mod pool {
         /// compute add-liquidity threshold for internal and external call
         #[ink(message)]
         pub fn compute_liquidity(&self, elp_amount_deposit: Balance) -> (Balance, Balance) {
-            let elp_price: u128 = self.oracle_contract.elp_price();
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
+            let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let elc_amount: Balance = self.elc_contract.total_supply();
             let mut relp_tokens: Balance = 0;
             let mut elc_tokens: Balance = 0;
@@ -242,7 +244,9 @@ mod pool {
         #[ink(message)]
         pub fn expand_elc(&mut self) {
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
             let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let lr = self.liability_ratio();
             let elcaim_deviation = self.elcaim * 102 / 100000;
             assert!(elc_price > elcaim_deviation);
@@ -312,7 +316,9 @@ mod pool {
         #[ink(message, payable)]
         pub fn contract_elc(&mut self){
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
             let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let elcaim_deviation = self.elcaim * 98 / 100000;
             assert!(elc_price < elcaim_deviation);
 
@@ -385,7 +391,9 @@ mod pool {
         #[ink(message)]
         pub fn liability_ratio(&self) -> u128 {
             let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
             let elp_amount: Balance = self.reserve;
             let elc_amount: Balance = self.elc_contract.total_supply();
             let lr =  elc_amount * elc_price  * 100 /(elp_price * elp_amount); //100 as base
@@ -396,6 +404,7 @@ mod pool {
         #[ink(message)]
         pub fn relp_price(&self) -> u128 {
             let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let relp_balance = self.relp_contract.total_supply();
             //p(rELP) = p(ELP)*Amount(ELP)/Amount(rELP)
             let relp_price = elp_price * self.reserve / relp_balance;
