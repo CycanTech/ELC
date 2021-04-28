@@ -11,18 +11,38 @@ mod pool {
     use relp::RELP;
     use oracle::Oracle;
     use exchange2::PatraExchange as PatraExchange2;
-//    #[cfg(not(feature = "ink-as-dependency"))]
-//    use factory::PatraFactory;
+
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_env::call::FromAccountId;
     use ink_prelude::vec::Vec;
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_storage::{
         lazy::Lazy,
+        traits::{PackedLayout, SpreadLayout},
     };
     #[cfg(not(feature = "ink-as-dependency"))]
     use ink_prelude::string::String;
 
+    #[derive(
+    Debug, PartialEq, Eq, Clone, scale::Encode, scale::Decode, SpreadLayout, PackedLayout,
+    )]
+    #[cfg_attr(
+    feature = "std",
+    derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout)
+    )]
+    pub struct PoolInfo {
+        elcaim: u128,
+        k: u128, //inflation factor
+        reserve: Balance,
+        risk_reserve: Balance,
+        k_update_time: u128,
+        last_expand_time: u128,
+        last_contract_time: u128,
+        adjust_gap: u128,
+        elc_accountid: AccountId,
+        relp_accountid: AccountId,
+        exchange_accountid: AccountId,
+    }
 
     #[ink(storage)]
     pub struct Pool {
@@ -30,6 +50,8 @@ mod pool {
         k: u128, //inflation factor
         reserve: Balance,
         risk_reserve: Balance,
+        elc_risk_reserve_source: u128,
+        elc_reserve_source: u128,
         k_update_time: u128,
         last_expand_time: u128,
         last_contract_time: u128,
@@ -39,7 +61,6 @@ mod pool {
         relp_contract: Lazy<RELP>,
         relp_accountid: AccountId,
         oracle_contract: Lazy<Oracle>,
-//        factory_contract: Lazy<PatraFactory>,
         exchange_contract: Lazy<PatraExchange2>,
         exchange_accountid: AccountId,
     }
@@ -69,9 +90,11 @@ mod pool {
     #[ink(event)]
     pub struct ExpandEvent {
         #[ink(topic)]
-        expand_type: String,
+        elc_risk_amount: Balance,
         #[ink(topic)]
-        expand_amount: Balance,
+        elc_reserve_amount: Balance,
+        #[ink(topic)]
+        elc_raise_amount: Balance,
         #[ink(topic)]
         elp_amount: Balance,
     }
@@ -79,16 +102,18 @@ mod pool {
     #[ink(event)]
     pub struct ContractEvent {
         #[ink(topic)]
-        contract_amount: Balance,
+        elc_risk_reserve_source: Balance,
+        #[ink(topic)]
+        elc_reserve_source: Balance,
         #[ink(topic)]
         risk_reserve_consumed: Balance,
+        #[ink(topic)]
         reserve_consumed: Balance,
     }
 
     impl Pool {
         #[ink(constructor)]
-        pub fn new(
-            risk_reserve: Balance,
+        pub fn new (
             elc_token: AccountId,
             relp_token: AccountId,
             oracle_addr: AccountId,
@@ -103,7 +128,9 @@ mod pool {
                 elcaim: 100000,
                 k: 5, //0.00005 * 100000
                 reserve: 0,
-                risk_reserve: risk_reserve,
+                risk_reserve: 0,
+                elc_risk_reserve_source: 0,
+                elc_reserve_source: 0,
                 k_update_time: blocktime,
                 last_expand_time:  blocktime,
                 last_contract_time:  blocktime,
@@ -113,7 +140,6 @@ mod pool {
                 elc_accountid: elc_token,
                 relp_contract: Lazy::new(relp_contract),
                 relp_accountid: relp_token,
-//                factory_contract: Lazy::new(factory_contract),
                 exchange_contract: Lazy::new(exchange_contract),
                 exchange_accountid: exchange_account,
             };
@@ -127,7 +153,8 @@ mod pool {
             let caller: AccountId = self.env().caller();
             let elp_amount: Balance = self.env().transferred_balance();
             let (relp_tokens, elc_tokens) = self.compute_liquidity(elp_amount);
-            if elc_tokens != 0 {
+            let lr = self.liability_ratio();
+            if elc_tokens > 0 {
                 assert!(self
                     .elc_contract
                     .mint(caller, elc_tokens)
@@ -143,21 +170,24 @@ mod pool {
                 relp_amount: relp_tokens,
                 elc_amount: elc_tokens,
             });
+            self.reserve += elp_amount;
             (relp_tokens, elc_tokens)
         }
 
         /// compute add-liquidity threshold for internal and external call
         #[ink(message)]
         pub fn compute_liquidity(&self, elp_amount_deposit: Balance) -> (Balance, Balance) {
-            let elp_price: u128 = self.oracle_contract.elp_price();
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
+            let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let elc_amount: Balance = self.elc_contract.total_supply();
             let mut relp_tokens: Balance = 0;
             let mut elc_tokens: Balance = 0;
             let mut relp_price = self.relp_price();
             let lr = self.liability_ratio();
             if lr < 30 {
-                // compute elp amount make LR >= 30
+                // compute elp amount that can make LR >= 30
                 let elp_amount_threshold: Balance  = elc_amount * elc_price * 100 / (elp_price * 30);
                 if elp_amount_deposit < elp_amount_threshold {
                     relp_tokens = elp_price * elp_amount_deposit / relp_price;
@@ -178,11 +208,18 @@ mod pool {
         pub fn remove_liquidity(&mut self, relp_amount: Balance) -> Balance {
             self.update_elc_aim();
             let caller: AccountId= self.env().caller();
-//            let elp_price: u128 = self.oracle_contract.elp_price();
             let lr = self.liability_ratio();
-            let relp_balance = self.relp_contract.total_supply();
+            let relp_supply = self.relp_contract.total_supply();
+            let relp_balance = self.relp_contract.balance_of(caller);
             let mut elp_amount: Balance = 0;
-            assert!(relp_amount > 0);
+            assert!(relp_balance > 0, "user relp balance need > 0");
+
+            // when LR > 90, cannot remove liquidity(redeem)
+            assert!(lr > 90, "when LR > 90, cannot remove liquidity(redeem)");
+
+            //first: give reward
+            self.get_reward();
+
             //burn relp
             assert!(self
                 .relp_contract
@@ -194,25 +231,22 @@ mod pool {
                 //compute ELP amount
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / p(ELP)
                 // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP)
-                elp_amount = relp_amount * self.reserve / relp_balance;
+                elp_amount = relp_amount * self.reserve / relp_supply;
             } else {
                 //compute ELP amount
                 //△Amount(ELP) = △Amount(rELP) * p(rELP) / (p(ELP) * (1-LR))
                 // △Amount(ELP) = △Amount(rELP)*Amount(ELP)/Amount(rELP) / (1-LR))
-                elp_amount =  relp_amount * self.reserve * 100 / relp_balance / (100 - lr);
+                elp_amount =  relp_amount * self.reserve * 100 / relp_supply / (100 - lr);
             }
 
             //redeem ELP
             assert!(self.env().transfer(caller, elp_amount).is_ok());
-
+            self.reserve -= elp_amount;
             self.env().emit_event(RemoveLiquidity {
                 sender: caller,
                 relp_amount: relp_amount,
                 elp_amount: elp_amount,
             });
-
-            //give reward
-            self.get_reward();
             elp_amount
         }
 
@@ -225,7 +259,7 @@ mod pool {
             let now_time: u128 = self.env().block_timestamp().into();
             let (hold_time, hold_realtime) = self.relp_contract.hold_time(caller, now_time);
             let hold_time_all: u128 = self.relp_contract.hold_time_all(now_time);
-            //6 seconds per block, every block reward, reward assume reward is 5, decimal is 10^12
+            //6 seconds per block, every block reward assume is 5, decimal is 10^12
             let elp_amount: u128 = hold_time / hold_time_all * (hold_realtime/6) * 5 * 10^12 ;
             if self.risk_reserve > 0 {
                 assert!(self.env().transfer(caller, elp_amount).is_ok());
@@ -242,9 +276,11 @@ mod pool {
         #[ink(message)]
         pub fn expand_elc(&mut self) {
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
             let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let lr = self.liability_ratio();
-            let elcaim_deviation = self.elcaim * 102 / 100000;
+            let elcaim_deviation = self.elcaim * 102 / 100; //theory deviation is [elcaim * 98, elcaim * 102]
             assert!(elc_price > elcaim_deviation);
 
             //assert time > adjust duration
@@ -252,7 +288,6 @@ mod pool {
             let gap: u128 = block_time - self.last_expand_time;
             assert!(gap >= self.adjust_gap);
 
-            let elc_balance = self.elc_contract.balance_of(self.env().account_id());
             let base: u128 = 10;
 
             // estimate ELC value: value per ELC in swap
@@ -266,26 +301,45 @@ mod pool {
             let elc_amount: Balance = self.elc_contract.total_supply();
             let expand_amount = price_impact_for_expand * elc_amount / 100;
             let mut elp_amount:u128 = 0;
-            if elc_balance > expand_amount {
-                //swap elc for elp
-//                if(self.exchange_contract == (&0)) {
-//                    self.exchange_contract = self.factory_contract.get_exchange(elc_contract, to_token).unwrap_or(&0);
-//                    assert!((self.exchange_contract) != (&0));
-//                }
-//                let adj_num = self.expand_adj_num;
-//                let adj_bignum = adj_num * (base.pow(token_decimals));
-                assert!(self.elc_contract.approve(self.exchange_accountid, expand_amount).is_ok());
-                elp_amount = self.exchange_contract.swap_token_to_dot_input(expand_amount);
-                assert!(elp_amount > 0);
-                self.env().emit_event(ExpandEvent {
-                    expand_type: String::from("swap"),
-                    expand_amount: expand_amount,
-                    elp_amount: elp_amount,
-                });
+            let mut elc_risk_reserve_source = self.elc_risk_reserve_source;
+            let mut elc_reserve_source = self.elc_reserve_source;
+            if (elc_risk_reserve_source + elc_reserve_source) >= expand_amount {
+                if elc_reserve_source >= expand_amount { 
+                    assert!(self.elc_contract.approve(self.exchange_accountid, expand_amount).is_ok());
+                    elp_amount = self.exchange_contract.swap_token_to_dot_input(expand_amount);
+                    assert!(elp_amount > 0);
+                    self.env().emit_event(ExpandEvent {
+                        elc_reserve_amount: expand_amount,
+                        elc_risk_amount: 0,
+                        elc_raise_amount: 0,
+                        elp_amount: elp_amount,
+                    });
+                    self.reserve += elp_amount;
+                    self.elc_reserve_source -= expand_amount;
+                } else {
+                    // deal with elc reserve
+                    assert!(self.elc_contract.approve(self.exchange_accountid, elc_reserve_source).is_ok());
+                    elp_amount = self.exchange_contract.swap_token_to_dot_input(elc_reserve_source);
+                    self.reserve += elp_amount;
+                    self.elc_reserve_source -= 0;
+                    
+                    //deal with elc risk reserve
+                    let elc_reserve_consumed = expand_amount - elc_risk_reserve_source;
+                    assert!(self.elc_contract.approve(self.exchange_accountid, elc_reserve_consumed).is_ok());
+                    let elp_risk_reserve_amount = self.exchange_contract.swap_token_to_dot_input(elc_reserve_consumed);
+                    self.risk_reserve += elp_risk_reserve_amount;
+                    self.elc_risk_reserve_source -= elc_reserve_consumed;
+                    self.env().emit_event(ExpandEvent {
+                        elc_reserve_amount: elc_reserve_source,
+                        elc_risk_amount: elc_reserve_consumed,
+                        elc_raise_amount: 0,
+                        elp_amount: elp_amount,
+                    });
+                }
             } else {
                 //raise ELC
-                if lr > 70 {
-                    // 95 allocate to ELC holders
+                if lr <= 70 {
+                    // 95% allocate to ELC holders, 5% allocato to the pool
                     let mint_to_holders_amount:u128 = expand_amount * 95 / 100;
                     let mint_to_reserve_amount:u128 = expand_amount * 5 / 100;
                     assert!(self.elc_contract.mint(self.relp_accountid, mint_to_holders_amount).is_ok());
@@ -298,22 +352,25 @@ mod pool {
                     elp_amount = self.exchange_contract.swap_token_to_dot_input(mint_to_reserve_amount);
                     assert!(elp_amount > 0);
                     self.env().emit_event(ExpandEvent {
-                        expand_type: String::from("raise"),
-                        expand_amount: expand_amount,
+                        elc_reserve_amount: 0,
+                        elc_risk_amount: 0,
+                        elc_raise_amount: expand_amount,
                         elp_amount: elp_amount,
                     });
+                    self.risk_reserve += elp_amount;
                 }
             }
             self.last_expand_time = block_time;
-            self.risk_reserve += elp_amount;
         }
 
-        // when price lower, call swap contract, swap elc for elp
+        // when price lower, call swap contract, swap elp for elc
         #[ink(message, payable)]
         pub fn contract_elc(&mut self){
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
             let elp_price: u128 = self.oracle_contract.elp_price();
-            let elcaim_deviation = self.elcaim * 98 / 100000;
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
+            let elcaim_deviation = self.elcaim * 98 / 100; //theory deviation is [elcaim * 98, elcaim * 102]
             assert!(elc_price < elcaim_deviation);
 
             //assert time > adjust duration
@@ -345,39 +402,67 @@ mod pool {
                 let elc_amount = self.exchange_contract.swap_dot_to_token_input();
                 assert!(elc_amount > 0);
                 self.env().emit_event(ContractEvent {
-                    contract_amount: elc_amount,
+                    elc_risk_reserve_source: elc_amount,
+                    elc_reserve_source: 0,
                     risk_reserve_consumed: elp_needed,
                     reserve_consumed: 0,
                 });
                 self.risk_reserve -= elp_needed;
+                self.elc_risk_reserve_source += elc_amount;
             } else {
                 //if risk reserve not enough, then use self.risk_reserve + reserve * 2% per day
-                if (self.risk_reserve + self.reserve * 2 / 100) > elp_needed {
-                    assert!(gap >= (24 * 60 * 60)); // one day later can call this
-                    assert!(self.env().transfer(self.exchange_accountid, elp_needed).is_ok());
-                    let elc_amount = self.exchange_contract.swap_dot_to_token_input();
-                    assert!(elc_amount > 0);
-                    self.env().emit_event(ContractEvent {
-                        contract_amount: elc_amount,
-                        risk_reserve_consumed: self.risk_reserve,
-                        reserve_consumed: elp_needed - self.risk_reserve,
-                    });
-                    self.risk_reserve -= self.risk_reserve;
+                let reserve_shreshold = self.reserve * 2 / 100;
+                let risk_reserve = self.risk_reserve;
+                let mut elc_amount_risk_reserve = 0;
+                if risk_reserve > 0 {
+                    assert!(self.env().transfer(self.exchange_accountid, risk_reserve).is_ok());
+                    elc_amount_risk_reserve = self.exchange_contract.swap_dot_to_token_input();
+                    self.risk_reserve = 0;
+                    self.elc_risk_reserve_source += elc_amount_risk_reserve;
                 }
+                let mut reserve_needed = elp_needed - risk_reserve;
+                if reserve_needed > reserve_shreshold {
+                    reserve_needed = reserve_shreshold;
+                }
+                assert!(gap >= (24 * self.adjust_gap)); // one day later can call this
+                assert!(self.env().transfer(self.exchange_accountid, reserve_needed).is_ok());
+                let elc_amount_reserve = self.exchange_contract.swap_dot_to_token_input();
+                self.elc_reserve_source += elc_amount_reserve;
+                self.reserve = self.reserve - reserve_needed;
+                self.env().emit_event(ContractEvent {
+                    elc_risk_reserve_source: elc_amount_risk_reserve ,
+                    elc_reserve_source: elc_amount_reserve,
+                    risk_reserve_consumed: self.risk_reserve,
+                    reserve_consumed: reserve_needed,
+                });
             }
             self.last_contract_time = block_time;
         }
 
         ///compute inflation factor, 6 seconds per block, every 10000 adjust ELC aim price
+        /// note: k base is 100000, cannot use pow, easy overflow
         #[ink(message)]
         pub fn update_elc_aim(&mut self) {
-            let block_time:u128 = self.env().block_timestamp().into();
-            let elcaim:u128 = self.elcaim;
-            let last_update_time = self.k_update_time;
-            let k: u128 = (block_time - self.k_update_time) / 6 / 10000;
-            if k > 0 {
-                self.elcaim = elcaim * (100000 + k) / 100000;
-                self.k_update_time = last_update_time + (k * 10000 * 6);
+            let block_time: u128 = self.env().block_timestamp().into();
+            let epoch = ((block_time - self.k_update_time) / 6 / 10000);
+            let mut elcaim_price: u128 = self.elcaim;
+            let mut k_base: u128 = 100000; /// actual k is 0.00005, base is 100000, cannot use pow, easy overflow
+            if epoch > 0 {
+//                let (k_base_pow, res) = k_base.overflowing_pow(epoch);
+//                if res == false {
+//                    let (k_compound_pow, res) = (k_base + self.k).overflowing_pow(epoch);
+//                    let elcaim_compute = self.elcaim.checked_mul(k_compound_pow).checked_div(k_base_pow);
+//                    if let Some(elcaim) = elcaim_compute {
+//                        self.elcaim = elcaim;
+//                    }
+//                }
+                let mut index = 0;
+                while index < epoch {
+                    elcaim_price = elcaim_price * (k_base + self.k) / k_base;
+                    index = index + 1;
+                }
+                self.elcaim = elcaim_price;
+                self.k_update_time = self.k_update_time + (self.k * 10000 * 6);
             }
         }
 
@@ -385,10 +470,15 @@ mod pool {
         #[ink(message)]
         pub fn liability_ratio(&self) -> u128 {
             let elp_price: u128 = self.oracle_contract.elp_price();
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
             let elc_price: u128 = self.oracle_contract.elc_price();
+            assert!(elc_price > 0, "ELC price is zero, check oracle functionality first!");
             let elp_amount: Balance = self.reserve;
             let elc_amount: Balance = self.elc_contract.total_supply();
-            let lr =  elc_amount * elc_price  * 100 /(elp_price * elp_amount); //100 as base
+            let lr =  elc_amount * elc_price * 100 /(elp_price * elp_amount); //100 as base
+            if lr > 100 {
+                return 100
+            }
             lr
         }
 
@@ -396,22 +486,46 @@ mod pool {
         #[ink(message)]
         pub fn relp_price(&self) -> u128 {
             let elp_price: u128 = self.oracle_contract.elp_price();
-            let relp_balance = self.relp_contract.total_supply();
-            //p(rELP) = p(ELP)*Amount(ELP)/Amount(rELP)
-            let relp_price = elp_price * self.reserve / relp_balance;
-            relp_price
+            assert!(elp_price > 0, "ELP price is zero, check oracle functionality first!");
+            let relp_supply = self.relp_contract.total_supply();
+            if relp_supply > 0 {
+                //p(rELP) = p(ELP)*Amount(ELP)/Amount(rELP)
+                let relp_price = elp_price * self.reserve / relp_supply;
+                relp_price
+            } else {
+                0
+            }
+        }
+
+        /// Do not direct tranfer ELP to deployed pool address, use this function
+        #[ink(message, payable)]
+        pub fn add_risk_reserve(&mut self) {
+            let elp_amount: Balance = self.env().transferred_balance();
+            self.risk_reserve += elp_amount;
         }
 
         #[ink(message)]
-        pub fn elp_reserve(&self) -> Balance { self.reserve }
+        pub fn elp_reserve(&self) -> Balance { self.reserve.clone() }
 
         #[ink(message)]
-        pub fn elp_risk_reserve(&self) -> Balance { self.risk_reserve }
+        pub fn elp_risk_reserve(&self) -> Balance { self.risk_reserve.clone() }
 
         /// define a struct returns all pool states
         #[ink(message)]
-        pub fn pool_state(&self)  {
-
+        pub fn pool_info(&self) -> PoolInfo {
+            PoolInfo {
+                elcaim: self.elcaim,
+                k: self.k, //inflation factor
+                reserve: self.reserve,
+                risk_reserve: self.risk_reserve,
+                k_update_time: self.k_update_time,
+                last_expand_time: self.last_expand_time,
+                last_contract_time: self.last_contract_time,
+                adjust_gap: self.adjust_gap,
+                elc_accountid: self.elc_accountid,
+                relp_accountid: self.relp_accountid,
+                exchange_accountid: self.exchange_accountid,
+            }
         }
     }
 }

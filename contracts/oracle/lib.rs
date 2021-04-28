@@ -10,7 +10,7 @@ mod oracle {
     #[ink(storage)]
     pub struct Oracle {
         /// Stores a single `bool` value on the storage.
-        elp_price: u128,  //价格乘以100，避免小数
+        elp_price: u128,  //all price decimals is 100000
         elc_price: u128,
         block_timestamp_last: u128,
         owner: AccountId,
@@ -29,13 +29,14 @@ mod oracle {
             }
         }
 
-        /// 每小时更新一次价格，精度100
+        /// update every hour, decimal is 100000
         #[ink(message)]
-        pub fn update(&mut self, elp_price: u128, elc_price: u128)  {
+        pub fn update(&mut self, elp_price: u128, elc_price: u128) -> bool {
             self.only_owner();
             self.elp_price = elp_price;
             self.elc_price =  elc_price;
-            self.block_timestamp_last = 0;
+            self.block_timestamp_last = Self::env().block_timestamp().into();
+            true
         }
 
         #[ink(message)]

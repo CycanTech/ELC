@@ -32,24 +32,27 @@ rustup target add wasm32-unknown-unknown --toolchain nightly
 ```
 ### Installing a substrate node(support ink! 3.0)
 
-For example, installing canvas node
+Recommend using [ELP-runtime-node](https://github.com/CycanTech/ELP-runtime-node), there's an oracle-pallet, which can feed ELC and ELP price into oracle contract. You can follow CycanTech/ELP-runtime-node README.md install ELP node.
+
+If you use other substrate node such as parity's canvas node, there's no oracle-pallet, you need add your orcale, if not, you still can deploy ELC contracts, but oracle contract will provide zero price.
+
 ```
-$ cargo install canvas-node --git https://github.com/paritytech/canvas-node.git --force --locked
+cargo install canvas-node --git https://github.com/paritytech/canvas-node.git --force --locked
 ```
 
 ### Run a local node
+
 ```
-cd canvas-node
 cargo run --release -- --dev
 ```
 
-### Compile
+### Compile ELC contracts
 compile all contracts 
 ```
 npx redspot compile
 ```
 
-### Deploy
+### Deploy ELC contracts
 ```
 npx redspot run scripts/elc.deploy.ts --no-compile
 ```

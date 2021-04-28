@@ -88,30 +88,20 @@ mod elc {
 
     impl ELC {
         #[ink(constructor)]
-        pub fn new(
-            initial_supply: Balance
-        ) -> Self {
+        pub fn new() -> Self {
             let caller = Self::env().caller();
-            let mut balances = StorageHashMap::new();
-            balances.insert(caller, initial_supply);
-
             let name: Option<String> = Some(String::from("Everlasting Cash"));
             let symbol: Option<String> = Some(String::from("ELC"));
             let decimals: Option<u8> = Some(8);
             let instance = Self {
-                total_supply: Lazy::new(initial_supply),
-                balances,
+                total_supply: Lazy::new(0),
+                balances: StorageHashMap::new(),
                 allowances: StorageHashMap::new(),
                 name,
                 symbol,
                 decimals,
                 owner: caller,
             };
-            Self::env().emit_event(Transfer {
-                from: None,
-                to: Some(caller),
-                value: initial_supply,
-            });
             instance
         }
 
@@ -224,7 +214,7 @@ mod elc {
             }
 
             let user_balance = self.balance_of(user);
-            self.balances.insert(user, user_balance + amount);
+            self.balances.insert(user, user_balance.saturating_add(amount));
             *self.total_supply += amount;
             self.env().emit_event(Mint { user, amount });
             Ok(())
@@ -245,7 +235,7 @@ mod elc {
                 return Err(Error::InsufficientBalance);
             }
 
-            self.balances.insert(user, user_balance - amount);
+            self.balances.insert(user, user_balance.saturating_sub(amount));
             *self.total_supply -= amount;
             self.env().emit_event(Burn { user, amount });
             Ok(())
