@@ -119,7 +119,7 @@ mod relp {
             let decimals: Option<u8> = Some(8);
             let elc_contract: ELC = FromAccountId::from_account_id(elc_token);
             let instance = Self {
-                total_supply: Lazy::new(initial_supply),
+                total_supply: Lazy::new(0),
                 balances: StorageHashMap::new(),
                 allowances: StorageHashMap::new(),
                 name,

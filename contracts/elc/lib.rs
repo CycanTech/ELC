@@ -94,7 +94,7 @@ mod elc {
             let symbol: Option<String> = Some(String::from("ELC"));
             let decimals: Option<u8> = Some(8);
             let instance = Self {
-                total_supply: Lazy::new(initial_supply),
+                total_supply: Lazy::new(0),
                 balances: StorageHashMap::new(),
                 allowances: StorageHashMap::new(),
                 name,

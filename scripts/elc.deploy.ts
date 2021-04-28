@@ -55,11 +55,23 @@ async function run() {
       relpContract.address.toString()
   );
 
-  // depoly ELP-ELC swap pair on patraswap, assume address is 5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG
+  // deploy patraswap on substrate node
+  // depoly ELP-ELC pair on patraswap, assume address is 5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG
+  /*
+   const swap = api.createType('AccountId', "5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG")
+   const swapFactory = await getContractAt('PatraFactory', swap, signer);
+   const creatpair = await swapFactory.createExchangeWithDot(elcContract.address, {
+      signer: signer
+    });
+    console.log('');
+    console.log(
+        'Creatpair successfully.
+    );
+  */
+
   const exchange_account =  api.createType('AccountId', "5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG");
   const poolFactory = await getContractFactory('pool', signer);
-  const poolContract = await poolFactory.deployed('new',
-      '1000000000000000000', elcContract.address, relpContract.address, oracleContract.address, exchange_account,{
+  const poolContract = await poolFactory.deployed('new', elcContract.address, relpContract.address, oracleContract.address, exchange_account,{
         gasLimit: '200000000000',
         value: '1000000000000000',
       });
