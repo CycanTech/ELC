@@ -398,15 +398,29 @@ mod pool {
         }
 
         ///compute inflation factor, 6 seconds per block, every 10000 adjust ELC aim price
+        /// note: k base is 100000, cannot use pow, easy overflow
         #[ink(message)]
         pub fn update_elc_aim(&mut self) {
-            let block_time:u128 = self.env().block_timestamp().into();
-            let elcaim:u128 = self.elcaim;
-            let last_update_time = self.k_update_time;
-            let k: u128 = (block_time - self.k_update_time) / 6 / 10000;
-            if k > 0 {
-                self.elcaim = elcaim * (100000 + k) / 100000;
-                self.k_update_time = last_update_time + (k * 10000 * 6);
+            let block_time: u128 = self.env().block_timestamp().into();
+            let epoch = ((block_time - self.k_update_time) / 6 / 10000);
+            let mut elcaim_price: u128 = self.elcaim;
+            let mut k_base: u128 = 100000; /// actual k is 0.00005, base is 100000, cannot use pow, easy overflow
+            if epoch > 0 {
+//                let (k_base_pow, res) = k_base.overflowing_pow(epoch);
+//                if res == false {
+//                    let (k_compound_pow, res) = (k_base + self.k).overflowing_pow(epoch);
+//                    let elcaim_compute = self.elcaim.checked_mul(k_compound_pow).checked_div(k_base_pow);
+//                    if let Some(elcaim) = elcaim_compute {
+//                        self.elcaim = elcaim;
+//                    }
+//                }
+                let mut index = 0;
+                while index < epoch {
+                    elcaim_price = elcaim_price * (k_base + self.k) / k_base;
+                    index = index + 1;;
+                }
+                self.elcaim = elcaim_price;
+                self.k_update_time = self.k_update_time + (self.k * 10000 * 6);
             }
         }
 
@@ -441,6 +455,7 @@ mod pool {
             }
         }
 
+        /// Do not direct tranfer ELP to deployed pool address, use this function
         #[ink(message, payable)]
         pub fn add_risk_reserve(&mut self) {
             let elp_amount: Balance = self.env().transferred_balance();
