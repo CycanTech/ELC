@@ -111,20 +111,16 @@ mod relp {
     impl RELP {
         #[ink(constructor)]
         pub fn new(
-            initial_supply: Balance,
             elc_token: AccountId,
         ) -> Self {
             let caller = Self::env().caller();
-            let mut balances = StorageHashMap::new();
-            balances.insert(caller, initial_supply);
-
             let name: Option<String> = Some(String::from("Risk Reserve of ELP"));
             let symbol: Option<String> = Some(String::from("rELP"));
             let decimals: Option<u8> = Some(8);
             let elc_contract: ELC = FromAccountId::from_account_id(elc_token);
             let instance = Self {
                 total_supply: Lazy::new(initial_supply),
-                balances,
+                balances: StorageHashMap::new(),
                 allowances: StorageHashMap::new(),
                 name,
                 symbol,
@@ -134,12 +130,6 @@ mod relp {
                 holders: Vec::new(),
                 elc_contract: Lazy::new(elc_contract),
             };
-
-            Self::env().emit_event(Transfer {
-                from: None,
-                to: Some(caller),
-                value: initial_supply,
-            });
             instance
         }
 

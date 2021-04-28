@@ -21,7 +21,7 @@ async function run() {
   // deploy elc contract
   const elcFactory = await getContractFactory('elc', signer);
 
-  const elcContract = await elcFactory.deployed('new', '0', {
+  const elcContract = await elcFactory.deployed('new', {
     gasLimit: '200000000000',
     salt: 'elc'
   });
@@ -45,7 +45,7 @@ async function run() {
 
   // deploy relp contract
   const relpFactory = await getContractFactory('relp', signer);
-  const relpContract = await relpFactory.deployed('new', '0', elcContract.address,{
+  const relpContract = await relpFactory.deployed('new', elcContract.address,{
     gasLimit: '200000000000',
     salt: 'relp',
   });
