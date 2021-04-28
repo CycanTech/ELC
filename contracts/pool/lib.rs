@@ -107,7 +107,6 @@ mod pool {
     impl Pool {
         #[ink(constructor)]
         pub fn new (
-            risk_reserve: Balance,
             elc_token: AccountId,
             relp_token: AccountId,
             oracle_addr: AccountId,
@@ -122,7 +121,7 @@ mod pool {
                 elcaim: 100000,
                 k: 5, //0.00005 * 100000
                 reserve: 0,
-                risk_reserve: risk_reserve,
+                risk_reserve: 0,
                 k_update_time: blocktime,
                 last_expand_time:  blocktime,
                 last_contract_time:  blocktime,
@@ -440,6 +439,12 @@ mod pool {
             } else {
                 0
             }
+        }
+
+        #[ink(message, payable)]
+        pub fn add_risk_reserve(&mut self) {
+            let elp_amount: Balance = self.env().transferred_balance();
+            self.risk_reserve += elp_amount;
         }
 
         #[ink(message)]
