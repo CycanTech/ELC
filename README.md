@@ -20,9 +20,15 @@ Based on the Polkadot/Kusama ecosystem,
 
 ## 3. Setup
 
-### Installing Node.js
+### Installing Node.js and redspot
 We require node >=12.0, if not, you can go to the nodejs website and find out how to install or upgrade.
 Or we recommend that you install Node using nvm. Windows users can use nvm-windows instead.
+
+Install redspot 
+
+```
+npm i redspot
+```
 
 ### Substrate Prerequisites
 Follow the official installation steps from the Substrate Developer Hub Knowledge Base.
@@ -47,6 +53,7 @@ cargo run --release -- --dev
 ```
 
 ### Compile ELC contracts
+
 compile all contracts 
 ```
 npx redspot compile

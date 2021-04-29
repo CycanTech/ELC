@@ -107,7 +107,6 @@ mod relp {
         amount: Balance,
     }
 
-
     impl RELP {
         #[ink(constructor)]
         pub fn new(
@@ -247,9 +246,7 @@ mod relp {
             self.env().emit_event(Mint { user, amount });
 
             //deal with holders
-            if user_balance == 0 {
-                self.holders.push(user);
-            }
+            self.update_holders(user, user_balance);
 
             //deal with transferlog
             self.push_holder_log(user, amount);
@@ -275,12 +272,8 @@ mod relp {
             *self.total_supply -= amount;
             self.env().emit_event(Burn { user, amount });
 
-            //deal with user
-            if (user_balance - amount) == 0 {
-                //  delete
-                let index = self.holders.iter().position(|x| *x == user).unwrap();
-                self.holders.remove(index);
-            }
+            //deal with holders
+            self.update_holders(user, user_balance - amount);
 
             //deal with transferlog
             self.take_holder_log(user);
@@ -310,16 +303,8 @@ mod relp {
             let to_balance = self.balance_of(to);
             self.balances.insert(to, to_balance + value);
 
-            if from_balance_after == 0 {
-                //  delete
-                let index = self.holders.iter().position(|x| *x == from).unwrap();
-                self.holders.remove(index);
-            }
-            if to_balance == 0 {
-                // push
-                self.holders.push(to);
-            }
-
+            self.update_holders(from, from_balance_after);
+            self.update_holders(to, to_balance + value);
             self.take_holder_log(from);
             self.push_holder_log(to, value);
             self.env().emit_event(Transfer {
@@ -330,13 +315,31 @@ mod relp {
             Ok(())
         }
 
+        fn update_holders(&mut self, from: AccountId, balance: Balance) {
+            if balance == 0 {
+                //  delete
+                let index = self.holders.iter().position(|x| *x == from).unwrap();
+                self.holders.remove(index);
+            } else {
+                // push
+                self.holders.push(from);
+            }
+        }
+
         ///if user is transfer sender, remove previous transferlog, then update
         fn take_holder_log(&mut self, from: AccountId) {
             let now_time: u128 = self.env().block_timestamp().into();
-
+            let logs = self.transferlogs.get(&from).unwrap();
+            let mut holdtime: u128 = 0;
+            let mut hold_realtime: u128 = 0;
+            for log in logs.iter() {
+                holdtime = holdtime.saturating_add(log.amount.saturating_mul(now_time.saturating_sub(log.timelog)));
+                hold_realtime = hold_realtime.saturating_add(now_time.saturating_sub(log.timelog));
+            }
+            let average_holder_time = holdtime / hold_realtime;
             let mut transferlog_from = Transferlog {
                 amount: self.balances.get(&from).copied().unwrap_or(0),
-                timelog: now_time,
+                timelog: average_holder_time,
             };
 
             if let Some(from_log) = self.transferlogs.get_mut(&from) {
