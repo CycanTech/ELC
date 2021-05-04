@@ -1,9 +1,9 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0x76aa15ec9b83afcf2f43293e873e9ad230d799553f169dc0d1caf8b27d5c5d08",
+    "hash": "0xb4866fe3111861d62459347ed84389e9c36c36ddefa4d2d29a126cc0624c2783",
     "language": "ink! 3.0.0-rc3",
-    "compiler": "rustc 1.52.0-nightly"
+    "compiler": "rustc 1.53.0-nightly"
   },
   "contract": {
     "name": "oracle",
@@ -50,14 +50,19 @@
           }
         ],
         "docs": [
-          " 每小时更新一次价格，精度100"
+          " update every hour, decimal is 100000"
         ],
         "mutates": true,
         "name": [
           "update"
         ],
         "payable": false,
-        "returnType": null,
+        "returnType": {
+          "displayName": [
+            "bool"
+          ],
+          "type": 5
+        },
         "selector": "0x5f234f5d"
       },
       {
@@ -211,6 +216,11 @@
     {
       "def": {
         "primitive": "u8"
+      }
+    },
+    {
+      "def": {
+        "primitive": "bool"
       }
     }
   ]

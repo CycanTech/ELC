@@ -1,9 +1,9 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0x0e7e37075b1cfeed506d1db398cadefa8d9d9b0b2ae698595cd53dc28bafff65",
+    "hash": "0x6ecace00c31079901e16a4e71ccb91f518d9b1f60ac0948b6987f64da8d238e8",
     "language": "ink! 3.0.0-rc3",
-    "compiler": "rustc 1.52.0-nightly"
+    "compiler": "rustc 1.53.0-nightly"
   },
   "contract": {
     "name": "pool",
@@ -16,15 +16,6 @@
     "constructors": [
       {
         "args": [
-          {
-            "name": "risk_reserve",
-            "type": {
-              "displayName": [
-                "Balance"
-              ],
-              "type": 1
-            }
-          },
           {
             "name": "elc_token",
             "type": {
@@ -165,18 +156,29 @@
           {
             "docs": [],
             "indexed": true,
-            "name": "expand_type",
+            "name": "elc_risk_amount",
             "type": {
               "displayName": [
-                "String"
+                "Balance"
               ],
-              "type": 6
+              "type": 1
             }
           },
           {
             "docs": [],
             "indexed": true,
-            "name": "expand_amount",
+            "name": "elc_reserve_amount",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "name": "elc_raise_amount",
             "type": {
               "displayName": [
                 "Balance"
@@ -204,7 +206,18 @@
           {
             "docs": [],
             "indexed": true,
-            "name": "contract_amount",
+            "name": "elc_risk_reserve_source",
+            "type": {
+              "displayName": [
+                "Balance"
+              ],
+              "type": 1
+            }
+          },
+          {
+            "docs": [],
+            "indexed": true,
+            "name": "elc_reserve_source",
             "type": {
               "displayName": [
                 "Balance"
@@ -225,7 +238,7 @@
           },
           {
             "docs": [],
-            "indexed": false,
+            "indexed": true,
             "name": "reserve_consumed",
             "type": {
               "displayName": [
@@ -357,7 +370,8 @@
       {
         "args": [],
         "docs": [
-          "compute inflation factor, 6 seconds per block, every 10000 adjust ELC aim price"
+          "compute inflation factor, 6 seconds per block, every 10000 adjust ELC aim price",
+          " note: k base is 100000, cannot use pow, easy overflow"
         ],
         "mutates": true,
         "name": [
@@ -405,6 +419,19 @@
       },
       {
         "args": [],
+        "docs": [
+          " Do not direct tranfer ELP to deployed pool address, use this function"
+        ],
+        "mutates": true,
+        "name": [
+          "add_risk_reserve"
+        ],
+        "payable": true,
+        "returnType": null,
+        "selector": "0xbb5a233b"
+      },
+      {
+        "args": [],
         "docs": [],
         "mutates": false,
         "name": [
@@ -442,11 +469,16 @@
         ],
         "mutates": false,
         "name": [
-          "pool_state"
+          "pool_info"
         ],
         "payable": false,
-        "returnType": null,
-        "selector": "0x3402e7c0"
+        "returnType": {
+          "displayName": [
+            "PoolInfo"
+          ],
+          "type": 6
+        },
+        "selector": "0xde955e9d"
       }
     ]
   },
@@ -496,7 +528,7 @@
               "ty": 1
             }
           },
-          "name": "k_update_time"
+          "name": "elc_risk_reserve_source"
         },
         {
           "layout": {
@@ -505,7 +537,7 @@
               "ty": 1
             }
           },
-          "name": "last_expand_time"
+          "name": "elc_reserve_source"
         },
         {
           "layout": {
@@ -514,7 +546,7 @@
               "ty": 1
             }
           },
-          "name": "last_contract_time"
+          "name": "k_update_time"
         },
         {
           "layout": {
@@ -523,34 +555,25 @@
               "ty": 1
             }
           },
-          "name": "adjust_gap"
+          "name": "last_expand_time"
         },
         {
           "layout": {
-            "struct": {
-              "fields": [
-                {
-                  "layout": {
-                    "cell": {
-                      "key": "0x0800000000000000000000000000000000000000000000000000000000000000",
-                      "ty": 2
-                    }
-                  },
-                  "name": "account_id"
-                }
-              ]
+            "cell": {
+              "key": "0x0800000000000000000000000000000000000000000000000000000000000000",
+              "ty": 1
             }
           },
-          "name": "elc_contract"
+          "name": "last_contract_time"
         },
         {
           "layout": {
             "cell": {
               "key": "0x0900000000000000000000000000000000000000000000000000000000000000",
-              "ty": 2
+              "ty": 1
             }
           },
-          "name": "elc_accountid"
+          "name": "adjust_gap"
         },
         {
           "layout": {
@@ -568,7 +591,7 @@
               ]
             }
           },
-          "name": "relp_contract"
+          "name": "elc_contract"
         },
         {
           "layout": {
@@ -577,7 +600,7 @@
               "ty": 2
             }
           },
-          "name": "relp_accountid"
+          "name": "elc_accountid"
         },
         {
           "layout": {
@@ -595,6 +618,33 @@
               ]
             }
           },
+          "name": "relp_contract"
+        },
+        {
+          "layout": {
+            "cell": {
+              "key": "0x0d00000000000000000000000000000000000000000000000000000000000000",
+              "ty": 2
+            }
+          },
+          "name": "relp_accountid"
+        },
+        {
+          "layout": {
+            "struct": {
+              "fields": [
+                {
+                  "layout": {
+                    "cell": {
+                      "key": "0x0e00000000000000000000000000000000000000000000000000000000000000",
+                      "ty": 2
+                    }
+                  },
+                  "name": "account_id"
+                }
+              ]
+            }
+          },
           "name": "oracle_contract"
         },
         {
@@ -604,7 +654,7 @@
                 {
                   "layout": {
                     "cell": {
-                      "key": "0x0d00000000000000000000000000000000000000000000000000000000000000",
+                      "key": "0x0f00000000000000000000000000000000000000000000000000000000000000",
                       "ty": 2
                     }
                   },
@@ -618,7 +668,7 @@
         {
           "layout": {
             "cell": {
-              "key": "0x0e00000000000000000000000000000000000000000000000000000000000000",
+              "key": "0x1000000000000000000000000000000000000000000000000000000000000000",
               "ty": 2
             }
           },
@@ -673,8 +723,71 @@
     },
     {
       "def": {
-        "primitive": "str"
-      }
+        "composite": {
+          "fields": [
+            {
+              "name": "elcaim",
+              "type": 1,
+              "typeName": "u128"
+            },
+            {
+              "name": "k",
+              "type": 1,
+              "typeName": "u128"
+            },
+            {
+              "name": "reserve",
+              "type": 1,
+              "typeName": "Balance"
+            },
+            {
+              "name": "risk_reserve",
+              "type": 1,
+              "typeName": "Balance"
+            },
+            {
+              "name": "k_update_time",
+              "type": 1,
+              "typeName": "u128"
+            },
+            {
+              "name": "last_expand_time",
+              "type": 1,
+              "typeName": "u128"
+            },
+            {
+              "name": "last_contract_time",
+              "type": 1,
+              "typeName": "u128"
+            },
+            {
+              "name": "adjust_gap",
+              "type": 1,
+              "typeName": "u128"
+            },
+            {
+              "name": "elc_accountid",
+              "type": 2,
+              "typeName": "AccountId"
+            },
+            {
+              "name": "relp_accountid",
+              "type": 2,
+              "typeName": "AccountId"
+            },
+            {
+              "name": "exchange_accountid",
+              "type": 2,
+              "typeName": "AccountId"
+            }
+          ]
+        }
+      },
+      "path": [
+        "pool",
+        "pool",
+        "PoolInfo"
+      ]
     }
   ]
 }
