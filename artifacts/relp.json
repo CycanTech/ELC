@@ -1,9 +1,9 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0xf65a13d5c0d5250721a0b6b28fa97ea6d32727afefc071e47e2d7a80b04ad105",
+    "hash": "0x1c8a0a086510f3f520ba1b975a7bc304f282512f331b5341aa6967d18cd11795",
     "language": "ink! 3.0.0-rc3",
-    "compiler": "rustc 1.52.0-nightly"
+    "compiler": "rustc 1.53.0-nightly"
   },
   "contract": {
     "name": "relp",
@@ -16,15 +16,6 @@
     "constructors": [
       {
         "args": [
-          {
-            "name": "initial_supply",
-            "type": {
-              "displayName": [
-                "Balance"
-              ],
-              "type": 1
-            }
-          },
           {
             "name": "elc_token",
             "type": {
