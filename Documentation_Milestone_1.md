@@ -107,8 +107,6 @@ pub struct Pool {
 
 #### Oracle Contract
 
-The oracle of reserve asset ELP and stablecoin ELC is implemented by [ELP-runtime-node](https://github.com/CycanTech/ELP-runtime-node), price-fetch pallet,  Which can feed ELP and ELC price th oracle contract.
-
 ##### functions
 
 - `pub fn update(&mut self, elp_price: u128, elc_price: u128) -> bool`：price-fetch pallet feed price to oracle contract every hour.
