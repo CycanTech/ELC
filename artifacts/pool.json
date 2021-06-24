@@ -1,9 +1,9 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0x6ecace00c31079901e16a4e71ccb91f518d9b1f60ac0948b6987f64da8d238e8",
+    "hash": "0x866be7ad2fa5dd8374612311d7a80965c0e92caf5f6832a2c1e2da12dca34b03",
     "language": "ink! 3.0.0-rc3",
-    "compiler": "rustc 1.53.0-nightly"
+    "compiler": "rustc 1.55.0-nightly"
   },
   "contract": {
     "name": "pool",

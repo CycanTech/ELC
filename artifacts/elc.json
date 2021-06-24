@@ -1,9 +1,9 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0x2767813728639f2edffd490539532f16a3eec00c7cc8667805fa31d1039b32b8",
+    "hash": "0x82e79e1cf61a76c5d93b0a8af096be447a08dbf77aa3255fba478c9e6798f82a",
     "language": "ink! 3.0.0-rc3",
-    "compiler": "rustc 1.53.0-nightly"
+    "compiler": "rustc 1.55.0-nightly"
   },
   "contract": {
     "name": "elc",

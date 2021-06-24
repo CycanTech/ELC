@@ -1,4 +1,5 @@
 # ELC — Everlasting Cash
+
 ## 1. Introduction
 
 ELC is a decentralized anti-inflation stablecoin with a reserve system, a hybrid of a crypto-collateralized and algorithmic stablecoin mechanism, with the collateralized mechanism providing the underlying value guarantee, and the algorithmic mechanism incentivizing the participants of the collateralized mechanism on one hand and hedging the downside risk when the demand for the stablecoin is insufficient on the other. 
@@ -17,50 +18,89 @@ Based on the Polkadot/Kusama ecosystem,
 
 4.The buffer mechanism with reserves for price falls avoids the death loop trap of algorithmic stablecoins.
 
-
 ## 3. Setup
 
-### Installing Node.js and redspot
-We require node >=12.0, if not, you can go to the nodejs website and find out how to install or upgrade.
+### Substrate and ink! Prerequisites
+
+see the file [InkConfiguration.md](./InkConfiguration.md)
+
+### Installing Node.js and dependency library
+
+We require node >=14.0, if not, you can go to the nodejs website and find out how to install or upgrade.
 Or we recommend that you install Node using nvm. Windows users can use nvm-windows instead.
 
-Install redspot 
+install node for ubuntu users
 
 ```
-npm i redspot
+# install node
+sudo apt install npm
+
+# check node version, if node version < 14.0, do the following steps to upgrade.
+node -v
+
+# install node version management tool `n`
+sudo npm install n -g
+
+# install the latest lts version
+sudo n lts
+
+# check node version again
+node -v
 ```
 
-### Substrate Prerequisites
-Follow the official installation steps from the Substrate Developer Hub Knowledge Base.
-```
-rustup component add rust-src --toolchain nightly
-rustup target add wasm32-unknown-unknown --toolchain nightly
-```
-### Installing a substrate node(support ink! 3.0)
-
-Recommend using [ELP-runtime-node](https://github.com/CycanTech/ELP-runtime-node), there's an oracle-pallet, which can feed ELC and ELP price into oracle contract. You can follow CycanTech/ELP-runtime-node README.md install ELP node.
-
-If you use other substrate node such as parity's canvas node, there's no oracle-pallet, you need add your orcale, if not, you still can deploy ELC contracts, but oracle contract will provide zero price.
+Install dependency Library
 
 ```
-cargo install canvas-node --git https://github.com/paritytech/canvas-node.git --force --locked
-```
-
-### Run a local node
-
-```
-cargo run --release -- --dev
+git clone https://github.com/CycanTech/ELC.git
+cd ELC
+npm i
 ```
 
 ### Compile ELC contracts
 
-compile all contracts 
+compile all contracts: 
+
+- set the default rust version to `nightly-x86_64-unknown-linux-gnu`
+
+- run `rustup show` command to see if the previous step is successful：
+
+  if success, it will show following infos:
+
+  ...
+
+  active toolchain
+
+  nightly-x86_64-unknown-linux-gnu (default)
+  rustc 1.55.0-nightly (6a758ea7e 2021-06-22)
+
+- compiling all contracts
+
 ```
+rustup default nightly-x86_64-unknown-linux-gnu
+rustup show  
 npx redspot compile
 ```
 
-### Deploy ELC contracts
+### Run a local node in another terminal
+
 ```
-npx redspot run scripts/elc.deploy.ts --no-compile
+canvas --dev --tmp
 ```
 
+### Deploy
+
+- Save contract addresses for testing:
+
+  After successful deployment, all contract addresses are printed on the terminal. Replace the five contract addresses in the file `tests/pub.parameter.ts`.
+
+```
+npx redspot run scripts/elc.deploy.ts --no-compile 
+```
+
+### Test Project
+
+Run test:
+
+```shell
+npx redspot test
+```

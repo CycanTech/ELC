@@ -1,9 +1,9 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0xb4866fe3111861d62459347ed84389e9c36c36ddefa4d2d29a126cc0624c2783",
+    "hash": "0xb2b50eaa0e72abf2aeb9d68570d5f1bc2f030c6295b2b35fc94e721f2a95c7ed",
     "language": "ink! 3.0.0-rc3",
-    "compiler": "rustc 1.53.0-nightly"
+    "compiler": "rustc 1.55.0-nightly"
   },
   "contract": {
     "name": "oracle",

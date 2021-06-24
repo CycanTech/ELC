@@ -55,26 +55,43 @@ async function run() {
       relpContract.address.toString()
   );
 
-  // deploy patraswap on substrate node
-  // depoly ELP-ELC pair on patraswap, assume address is 5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG
-  /*
-   const swap = api.createType('AccountId', "5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG")
-   const swapFactory = await getContractAt('PatraFactory', swap, signer);
-   const creatpair = await swapFactory.createExchangeWithDot(elcContract.address, {
-      signer: signer
-    });
-    console.log('');
-    console.log(
-        'Creatpair successfully.
-    );
-  */
-
-  const exchange_account =  api.createType('AccountId', "5GeJTi5fmhaQKUfpxTYKQGcaSEpWZ4grQVcng4ce5DyWwSrG");
+// deploy lpt contract
+  const lptFactory = await getContractFactory('lpt', signer);
+  const lptContract = await lptFactory.deployed('new', '1000000000000000000', 'lpt', 'lp Token', '12',{
+    gasLimit: '200000000000',
+    value: '80000000000000000',
+    salt: 'lpt',
+	});
+  console.log('');
+  console.log(
+      'Deploy lptContract successfully. The contract address: ',
+      lptContract.address.toString()
+  );
+  //await delay(30000);
+  
+  // deploy exchange2 contract
+  const exchange2Factory = await getContractFactory('exchange2', signer);
+  const exchange2Contract = await exchange2Factory.deployed('new', elcContract.address, lptContract.address,{
+    gasLimit: '200000000000',
+    value: '80000000000000000',
+    salt: 'exchange2',
+	});
+  console.log('');
+  console.log(
+    'Deploy exchange2Contract successfully. The contract address: ',
+    exchange2Contract.address.toString()
+  );
+  //await delay(30000
+  
+  // deploy pool contract
   const poolFactory = await getContractFactory('pool', signer);
-  const poolContract = await poolFactory.deployed('new', elcContract.address, relpContract.address, oracleContract.address, exchange_account,{
-        gasLimit: '200000000000',
-        value: '1000000000000000',
-      });
+  const poolContract = await poolFactory.deployed('new',
+      elcContract.address, relpContract.address, oracleContract.address, exchange2Contract.address,{
+    gasLimit: '200000000000',
+    value: '800000000000000000',
+    salt: 'pool',
+  });
+
   console.log('');
   console.log(
       'Deploy poolContract successfully. The contract address: ',

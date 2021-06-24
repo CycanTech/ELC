@@ -1,15 +1,15 @@
 {
   "metadataVersion": "0.1.0",
   "source": {
-    "hash": "0xa29faceed173ec4a8f28ff6db3cafea631fc81ddbe850ac89bf8251d6b91bc7d",
-    "language": "ink! 3.0.0-rc3",
-    "compiler": "rustc 1.55.0-nightly"
+    "hash": "0x477cfed500c51f1d9ef2e233ab78e417754024aa9c070a09d84598af2671e68e",
+    "language": "ink! 3.0.0-rc2",
+    "compiler": "rustc 1.52.0-nightly"
   },
   "contract": {
-    "name": "relp",
+    "name": "lpt",
     "version": "0.1.0",
     "authors": [
-      "[your_name] <[your_email]>"
+      "Patract Labs <tyler@patract.io>"
     ]
   },
   "spec": {
@@ -17,16 +17,45 @@
       {
         "args": [
           {
-            "name": "elc_token",
+            "name": "initial_supply",
             "type": {
               "displayName": [
-                "AccountId"
+                "Balance"
               ],
-              "type": 5
+              "type": 1
+            }
+          },
+          {
+            "name": "name",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 13
+            }
+          },
+          {
+            "name": "symbol",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 13
+            }
+          },
+          {
+            "name": "decimals",
+            "type": {
+              "displayName": [
+                "Option"
+              ],
+              "type": 14
             }
           }
         ],
-        "docs": [],
+        "docs": [
+          "Creates a new ERC-20 contract with the specified initial supply."
+        ],
         "name": [
           "new"
         ],
@@ -45,7 +74,7 @@
               "displayName": [
                 "Option"
               ],
-              "type": 23
+              "type": 18
             }
           },
           {
@@ -56,7 +85,7 @@
               "displayName": [
                 "Option"
               ],
-              "type": 23
+              "type": 18
             }
           },
           {
@@ -81,7 +110,7 @@
           {
             "docs": [],
             "indexed": true,
-            "name": "owner",
+            "name": "caller",
             "type": {
               "displayName": [
                 "AccountId"
@@ -190,9 +219,9 @@
           "displayName": [
             "Option"
           ],
-          "type": 17
+          "type": 13
         },
-        "selector": "0x53db29ae"
+        "selector": "0x6b1bb951"
       },
       {
         "args": [],
@@ -208,9 +237,9 @@
           "displayName": [
             "Option"
           ],
-          "type": 17
+          "type": 13
         },
-        "selector": "0xd733ea17"
+        "selector": "0xb42c3368"
       },
       {
         "args": [],
@@ -226,9 +255,9 @@
           "displayName": [
             "Option"
           ],
-          "type": 18
+          "type": 14
         },
-        "selector": "0x9715e3ca"
+        "selector": "0xc64b0eb2"
       },
       {
         "args": [],
@@ -246,7 +275,7 @@
           ],
           "type": 1
         },
-        "selector": "0xdb6375a8"
+        "selector": "0x143862ae"
       },
       {
         "args": [
@@ -276,7 +305,7 @@
           ],
           "type": 1
         },
-        "selector": "0x0f755a56"
+        "selector": "0xb7d968c9"
       },
       {
         "args": [
@@ -318,9 +347,9 @@
           "displayName": [
             "Result"
           ],
-          "type": 19
+          "type": 15
         },
-        "selector": "0x84a15da1"
+        "selector": "0x10d455c2"
       },
       {
         "args": [
@@ -359,7 +388,7 @@
           ],
           "type": 1
         },
-        "selector": "0x6a00165e"
+        "selector": "0xc04aa300"
       },
       {
         "args": [
@@ -416,9 +445,9 @@
           "displayName": [
             "Result"
           ],
-          "type": 19
+          "type": 15
         },
-        "selector": "0x0b396f18"
+        "selector": "0xbb399017"
       },
       {
         "args": [
@@ -458,9 +487,9 @@
           "displayName": [
             "Result"
           ],
-          "type": 19
+          "type": 15
         },
-        "selector": "0x681266a0"
+        "selector": "0x4ce0e831"
       },
       {
         "args": [
@@ -484,7 +513,7 @@
           }
         ],
         "docs": [
-          " Mint a new amount of tokens",
+          " Issue a new amount of tokens",
           " these tokens are deposited into the owner address"
         ],
         "mutates": true,
@@ -496,7 +525,7 @@
           "displayName": [
             "Result"
           ],
-          "type": 19
+          "type": 15
         },
         "selector": "0xcfdd9aa2"
       },
@@ -522,7 +551,7 @@
           }
         ],
         "docs": [
-          " Burn tokens.",
+          " Redeem tokens.",
           " These tokens are withdrawn from the owner address",
           " if the balance must be enough to cover the redeem",
           " or the call will fail."
@@ -536,174 +565,9 @@
           "displayName": [
             "Result"
           ],
-          "type": 19
+          "type": 15
         },
         "selector": "0xb1efc17b"
-      },
-      {
-        "args": [
-          {
-            "name": "from",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 5
-            }
-          },
-          {
-            "name": "value",
-            "type": {
-              "displayName": [
-                "Balance"
-              ],
-              "type": 1
-            }
-          },
-          {
-            "name": "now_time",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 1
-            }
-          }
-        ],
-        "docs": [],
-        "mutates": true,
-        "name": [
-          "update_hold_time_for_reward"
-        ],
-        "payable": false,
-        "returnType": null,
-        "selector": "0x01960d34"
-      },
-      {
-        "args": [
-          {
-            "name": "user",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 5
-            }
-          },
-          {
-            "name": "now_time",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 1
-            }
-          }
-        ],
-        "docs": [],
-        "mutates": false,
-        "name": [
-          "hold_time"
-        ],
-        "payable": false,
-        "returnType": {
-          "displayName": [],
-          "type": 22
-        },
-        "selector": "0x4c0fde4f"
-      },
-      {
-        "args": [
-          {
-            "name": "now_time",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 1
-            }
-          }
-        ],
-        "docs": [],
-        "mutates": false,
-        "name": [
-          "hold_time_all"
-        ],
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "u128"
-          ],
-          "type": 1
-        },
-        "selector": "0xe0a1b9b0"
-      },
-      {
-        "args": [
-          {
-            "name": "expand_amount",
-            "type": {
-              "displayName": [
-                "u128"
-              ],
-              "type": 1
-            }
-          }
-        ],
-        "docs": [],
-        "mutates": true,
-        "name": [
-          "mint_to_holders"
-        ],
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "Result"
-          ],
-          "type": 19
-        },
-        "selector": "0xdb07526d"
-      },
-      {
-        "args": [],
-        "docs": [
-          " Contract owner."
-        ],
-        "mutates": false,
-        "name": [
-          "owner"
-        ],
-        "payable": false,
-        "returnType": {
-          "displayName": [
-            "AccountId"
-          ],
-          "type": 5
-        },
-        "selector": "0xfeaea4fa"
-      },
-      {
-        "args": [
-          {
-            "name": "new_owner",
-            "type": {
-              "displayName": [
-                "AccountId"
-              ],
-              "type": 5
-            }
-          }
-        ],
-        "docs": [
-          " transfer contract ownership to new owner."
-        ],
-        "mutates": true,
-        "name": [
-          "transfer_ownership"
-        ],
-        "payable": false,
-        "returnType": null,
-        "selector": "0x107e33ea"
       }
     ]
   },
@@ -965,113 +829,6 @@
             }
           },
           "name": "owner"
-        },
-        {
-          "layout": {
-            "struct": {
-              "fields": [
-                {
-                  "layout": {
-                    "struct": {
-                      "fields": [
-                        {
-                          "layout": {
-                            "cell": {
-                              "key": "0x0900000002000000000000000000000000000000000000000000000000000000",
-                              "ty": 2
-                            }
-                          },
-                          "name": "header"
-                        },
-                        {
-                          "layout": {
-                            "struct": {
-                              "fields": [
-                                {
-                                  "layout": {
-                                    "cell": {
-                                      "key": "0x0a00000002000000000000000000000000000000000000000000000000000000",
-                                      "ty": 3
-                                    }
-                                  },
-                                  "name": "len"
-                                },
-                                {
-                                  "layout": {
-                                    "array": {
-                                      "cellsPerElem": 1,
-                                      "layout": {
-                                        "cell": {
-                                          "key": "0x0a00000003000000000000000000000000000000000000000000000000000000",
-                                          "ty": 4
-                                        }
-                                      },
-                                      "len": 4294967295,
-                                      "offset": "0x0b00000002000000000000000000000000000000000000000000000000000000"
-                                    }
-                                  },
-                                  "name": "elems"
-                                }
-                              ]
-                            }
-                          },
-                          "name": "entries"
-                        }
-                      ]
-                    }
-                  },
-                  "name": "keys"
-                },
-                {
-                  "layout": {
-                    "hash": {
-                      "layout": {
-                        "cell": {
-                          "key": "0x0b00000003000000000000000000000000000000000000000000000000000000",
-                          "ty": 13
-                        }
-                      },
-                      "offset": "0x0a00000003000000000000000000000000000000000000000000000000000000",
-                      "strategy": {
-                        "hasher": "Blake2x256",
-                        "postfix": "",
-                        "prefix": "0x696e6b20686173686d6170"
-                      }
-                    }
-                  },
-                  "name": "values"
-                }
-              ]
-            }
-          },
-          "name": "transferlogs"
-        },
-        {
-          "layout": {
-            "cell": {
-              "key": "0x0b00000003000000000000000000000000000000000000000000000000000000",
-              "ty": 16
-            }
-          },
-          "name": "holders"
-        },
-        {
-          "layout": {
-            "struct": {
-              "fields": [
-                {
-                  "layout": {
-                    "cell": {
-                      "key": "0x0c00000003000000000000000000000000000000000000000000000000000000",
-                      "ty": 5
-                    }
-                  },
-                  "name": "account_id"
-                }
-              ]
-            }
-          },
-          "name": "elc_contract"
         }
       ]
     }
@@ -1282,70 +1039,6 @@
     },
     {
       "def": {
-        "composite": {
-          "fields": [
-            {
-              "name": "value",
-              "type": 14,
-              "typeName": "V"
-            },
-            {
-              "name": "key_index",
-              "type": 3,
-              "typeName": "KeyIndex"
-            }
-          ]
-        }
-      },
-      "params": [
-        14
-      ],
-      "path": [
-        "ink_storage",
-        "collections",
-        "hashmap",
-        "ValueEntry"
-      ]
-    },
-    {
-      "def": {
-        "sequence": {
-          "type": 15
-        }
-      }
-    },
-    {
-      "def": {
-        "composite": {
-          "fields": [
-            {
-              "name": "amount",
-              "type": 1,
-              "typeName": "u128"
-            },
-            {
-              "name": "timelog",
-              "type": 1,
-              "typeName": "u128"
-            }
-          ]
-        }
-      },
-      "path": [
-        "relp",
-        "relp",
-        "Transferlog"
-      ]
-    },
-    {
-      "def": {
-        "sequence": {
-          "type": 5
-        }
-      }
-    },
-    {
-      "def": {
         "variant": {
           "variants": [
             {
@@ -1403,7 +1096,7 @@
             {
               "fields": [
                 {
-                  "type": 20,
+                  "type": 16,
                   "typeName": "T"
                 }
               ],
@@ -1412,7 +1105,7 @@
             {
               "fields": [
                 {
-                  "type": 21,
+                  "type": 17,
                   "typeName": "E"
                 }
               ],
@@ -1422,8 +1115,8 @@
         }
       },
       "params": [
-        20,
-        21
+        16,
+        17
       ],
       "path": [
         "Result"
@@ -1449,35 +1142,15 @@
             {
               "discriminant": 2,
               "name": "InsufficientAllowance"
-            },
-            {
-              "discriminant": 3,
-              "name": "OnlyOwnerAccess"
-            },
-            {
-              "discriminant": 4,
-              "name": "InvalidNewOwner"
-            },
-            {
-              "discriminant": 5,
-              "name": "InvalidAmount"
             }
           ]
         }
       },
       "path": [
-        "relp",
-        "relp",
+        "lpt",
+        "lpt",
         "Error"
       ]
-    },
-    {
-      "def": {
-        "tuple": [
-          1,
-          1
-        ]
-      }
     },
     {
       "def": {
