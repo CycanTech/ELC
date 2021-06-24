@@ -98,6 +98,12 @@ async function run() {
       poolContract.address.toString()
   );
 
+  // update elp price & elc price
+  const resultOracleUpdate = await oracleContract.update(1299, 1300, {
+    signer: signer
+  });
+  console.log('init elp price & elc price ....................', resultOracleUpdate.output);
+  
   // transfer ownerships
   const resultElcOldOwner = await elcContract.owner();
   console.log('elc old owner....................', resultElcOldOwner.output.toString());
