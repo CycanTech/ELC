@@ -70,7 +70,8 @@ compile all contracts:
 
   active toolchain
 
-  nightly-x86_64-unknown-linux-gnu (default)
+  nightly-x86_64-unknown-linux-gnu (default)  
+
   rustc 1.55.0-nightly (6a758ea7e 2021-06-22)
 
 - compiling all contracts
